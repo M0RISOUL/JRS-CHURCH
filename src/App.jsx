@@ -99,7 +99,7 @@ function Home({go}) {
         <div style={{position:"relative",zIndex:2,animation:"fadeUp 1s ease forwards"}}>
           <div className="aCross" style={{width:100,height:100,margin:"0 auto 32px",background:"radial-gradient(circle,rgba(201,168,76,.2),transparent)",border:"2px solid rgba(201,168,76,.4)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>✞</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:16}}>
-            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>D2 · Est. by Faith</span>
+            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}> · Est. by Faith</span>
           </div>
           <h1 className="font-display heroTitle goldText" style={{fontSize:"clamp(1.6rem,5vw,3.2rem)",lineHeight:1.3,marginBottom:12,maxWidth:700}}>
             Jesus The Rock<br/>of Our Salvation<br/>Mission Church
@@ -146,7 +146,7 @@ function Home({go}) {
       </div>
       <section>
         <div style={{maxWidth:700,margin:"0 auto",textAlign:"center"}}>
-          <Hdr eye="A Word From Our Head" title="Welcome to D2 Church"/>
+          <Hdr eye="A Word From Our Head" title="Welcome to Church"/>
           <p style={{fontSize:"1.2rem",lineHeight:2,color:"#B0A898",fontStyle:"italic",marginBottom:32}}>
             "Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."
           </p>
@@ -323,7 +323,7 @@ function Give() {
           )}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","D2 Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","D2 JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
+          {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
             <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
               <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
               <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
@@ -793,8 +793,8 @@ function GivingHistoryPanel() {
               <div><label>Note (Optional)</label><input placeholder="e.g. For Easter Sunday" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
             </div>
             <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,marginBottom:20,fontSize:".85rem",color:"#9A9080",lineHeight:1.9}}>
-              📱 <span style={{color:"#C9A84C"}}>GCash:</span> D2 Church Fund · 09XX-XXX-XXXX<br/>
-              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> D2 JTROS Mission · XXXX-XXXX-XXXX<br/>
+              📱 <span style={{color:"#C9A84C"}}>GCash:</span> Church Fund · 09XX-XXX-XXXX<br/>
+              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JTROS Mission · XXXX-XXXX-XXXX<br/>
               <span style={{fontSize:".8rem"}}>Please send payment before confirming.</span>
             </div>
             <button className="btnGold" style={{padding:"12px 28px"}} onClick={submit}>Confirm Offering →</button>
@@ -962,7 +962,7 @@ function ProfilePanel({user, onUpdateUser}) {
         <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
         <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:12,textTransform:"uppercase"}}>Church Info</div>
         <div style={{color:"#B0A898",lineHeight:2,fontSize:".95rem"}}>
-          <div>Church: <span style={{color:"#C9A84C"}}>D2 Jesus The Rock of Our Salvation Mission Church</span></div>
+          <div>Church: <span style={{color:"#C9A84C"}}>Jesus The Rock of Our Salvation Mission Church</span></div>
           <div>Username: <span style={{color:user.color}}>@{info.username}</span></div>
           <div>Member Since: <span style={{color:"#F0EAD6"}}>{info.joinedDate}</span></div>
         </div>
@@ -1036,7 +1036,7 @@ function ExportPanel() {
 
     // Summary sheet
     const sumRows = [
-      ["D2 Jesus The Rock of Our Salvation Mission Church"],
+      ["Jesus The Rock of Our Salvation Mission Church"],
       [`${sheetName} — Generated: ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}`],
       [],
       ...summary.map(s => [s.label, String(s.value)]),
@@ -1090,7 +1090,7 @@ function ExportPanel() {
     </style></head><body>
     <div class="top">
       <div class="cross">✞</div>
-      <div class="church">D2 Jesus The Rock of Our Salvation Mission Church</div>
+      <div class="church">Jesus The Rock of Our Salvation Mission Church</div>
       <h1>${title}</h1>
       <div class="date">Generated: ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</div>
     </div>
@@ -1099,7 +1099,7 @@ function ExportPanel() {
       <thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
-    <div class="foot">D2 JTROS Mission Church &nbsp;·&nbsp; Confidential Report &nbsp;·&nbsp; ${new Date().getFullYear()}</div>
+    <div class="foot">JTROS Mission Church &nbsp;·&nbsp; Confidential Report &nbsp;·&nbsp; ${new Date().getFullYear()}</div>
     <script>window.onload=()=>{window.print();}<\/script>
     </body></html>`;
 
@@ -1299,7 +1299,7 @@ function DashboardOverviewPanel() {
 // ── SYSTEM SETTINGS PANEL ────────────────────────────────────────────────────
 function SystemSettingsPanel({user, onUpdateUser}) {
   const [settings, setSettings] = useState({
-    churchName: "D2 Jesus The Rock of Our Salvation Mission Church",
+    churchName: "Jesus The Rock of Our Salvation Mission Church",
     tagline:    "He only is my rock and my salvation — Psalm 62:6",
     gcash:      "09XX-XXX-XXXX",
     bank:       "XXXX-XXXX-XXXX",
@@ -1521,7 +1521,7 @@ export default function App() {
             <div style={{fontSize:22,color:"#C9A84C"}}>✞</div>
             <div>
               <div className="font-display" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>JESUS THE ROCK</div>
-              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION · D2</div>
+              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION</div>
             </div>
           </div>
 
@@ -1622,7 +1622,7 @@ export default function App() {
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{fontSize:32,color:"#C9A84C",marginBottom:16}}>✞</div>
           <div className="font-display goldText" style={{fontSize:"1.1rem",marginBottom:8}}>Jesus The Rock of Our Salvation Mission Church</div>
-          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>D2 · SERVING BY FAITH</div>
+          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}> · SERVING BY FAITH</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:24}}>
             <span style={{color:"#9A9080",fontStyle:"italic",fontSize:".95rem"}}>"He only is my rock and my salvation; he is my defence; I shall not be moved." — Psalm 62:6</span>
           </div>
@@ -1631,7 +1631,7 @@ export default function App() {
               <span key={n} className="navLink font-sans" style={{fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer",color:"#9A9080"}} onClick={()=>go(n)}>{n}</span>
             ))}
           </div>
-          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 D2 Jesus The Rock of Our Salvation Mission Church · Built with Faith</div>
+          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Morisoul. All rights reserved.</div>
         </div>
       </footer>
     </>
