@@ -1958,7 +1958,7 @@ export default function App() {
             <div style={{fontSize:22,color:"#C9A84C"}}>✞</div>
             <div>
               <div className="font-display" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>JESUS THE ROCK</div>
-              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION ·</div>
+              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION</div>
             </div>
           </div>
 
