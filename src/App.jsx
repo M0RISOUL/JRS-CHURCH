@@ -4,6 +4,9 @@ import {
   SONGS, ROLES, ROLE_ACCESS, ACCOUNTS
 } from "./data";
 
+// Helper: add to activity log
+const addLog = (icon, msg, role, user) => { window.__activityLog = [{icon,msg,role,user:user||role,time:new Date().toLocaleDateString("en-PH",{month:"short",day:"numeric"})+" · "+new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})}, ...(window.__activityLog||[])]; };
+
 const style = `
   @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=Tenor+Sans&display=swap');
   :root {
@@ -99,7 +102,7 @@ function Home({go}) {
         <div style={{position:"relative",zIndex:2,animation:"fadeUp 1s ease forwards"}}>
           <div className="aCross" style={{width:100,height:100,margin:"0 auto 32px",background:"radial-gradient(circle,rgba(201,168,76,.2),transparent)",border:"2px solid rgba(201,168,76,.4)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>✞</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:16}}>
-            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}> · Est. by Faith</span>
+            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>Est. by Faith</span>
           </div>
           <h1 className="font-display heroTitle goldText" style={{fontSize:"clamp(1.6rem,5vw,3.2rem)",lineHeight:1.3,marginBottom:12,maxWidth:700}}>
             Jesus The Rock<br/>of Our Salvation<br/>Mission Church
@@ -146,7 +149,7 @@ function Home({go}) {
       </div>
       <section>
         <div style={{maxWidth:700,margin:"0 auto",textAlign:"center"}}>
-          <Hdr eye="A Word From Our Head" title="Welcome to Church"/>
+          <Hdr eye="A Word From Our Head" title="Welcome to JRS Church"/>
           <p style={{fontSize:"1.2rem",lineHeight:2,color:"#B0A898",fontStyle:"italic",marginBottom:32}}>
             "Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."
           </p>
@@ -265,6 +268,18 @@ function Events() {
 }
 
 function Media() {
+  const [playing, setPlaying] = useState(null);
+  const [filter, setFilter] = useState("All");
+  const getYouTubeId = (url) => {
+    if (!url) return null;
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  };
+  const catColor = (c) => c==="Praise"?"#C9A84C":c==="Worship"?"#B07BE0":c==="Hymn"?"#7B9EF0":c==="Special"?"#E07B7B":"#9A9080";
+  const cats = ["All","Praise","Worship","Hymn","Special"];
+  const filtered = filter === "All" ? SONGS : SONGS.filter(s=>s.category===filter);
+  const cur = playing !== null ? filtered[playing] : null;
+  const vid = cur ? getYouTubeId(cur.youtube) : null;
   return (
     <section>
       <Hdr eye="God's Word & Worship" title="Sermons & Media"/>
@@ -277,20 +292,57 @@ function Media() {
         </div>
         <button className="btnGold">Watch Live on YouTube</button>
       </div>
-      <Hdr eye="Our Music" title="Original Songs & Hymns"/>
-      <div className="g2">
-        {SONGS.map(s=>(
-          <div key={s.title} className="card" style={{background:"#12121A",border:"1px solid #22223A",padding:"20px 24px",display:"flex",alignItems:"center",gap:20}}>
-            <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🎵</div>
-            <div><div style={{fontWeight:600,marginBottom:2}}>{s.title}</div><div style={{color:"#9A9080",fontSize:".85rem"}}>{s.author}</div></div>
-            <div style={{marginLeft:"auto"}}><span className="badge">{s.category}</span></div>
+      <Hdr eye="Our Music" title="Song List & Music Player"/>
+      {cur && (
+        <div style={{background:"#12121A",border:"1px solid #B07BE0",marginBottom:28,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#B07BE0,transparent)"}}/>
+          <div style={{padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+            <div>
+              <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".12em",color:"#B07BE0",marginBottom:4}}>▶ NOW PLAYING</div>
+              <div style={{fontWeight:700,fontSize:"1.05rem"}}>{cur.title}</div>
+              <div style={{color:"#9A9080",fontSize:".85rem"}}>{cur.author}</div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setPlaying(playing>0?playing-1:filtered.length-1)} style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:38,height:38,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏮</button>
+              <button onClick={()=>setPlaying(null)} style={{background:"rgba(224,123,123,.15)",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",width:38,height:38,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏹</button>
+              <button onClick={()=>setPlaying(playing<filtered.length-1?playing+1:0)} style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:38,height:38,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏭</button>
+            </div>
           </div>
+          {vid ? (
+            <div style={{position:"relative",paddingBottom:"42%",background:"#000"}}>
+              <iframe src={`https://www.youtube.com/embed/${vid}?autoplay=1&rel=0`} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/>
+            </div>
+          ) : (
+            <div style={{padding:"32px",textAlign:"center",color:"#9A9080",background:"#0A0A0F"}}>🎵 No YouTube link for this song.</div>
+          )}
+        </div>
+      )}
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap",alignItems:"center"}}>
+        {cats.map(c=>(
+          <button key={c} onClick={()=>{setFilter(c);setPlaying(null);}} style={{padding:"6px 16px",background:filter===c?catColor(c):"transparent",border:`1px solid ${filter===c?catColor(c):"#22223A"}`,color:filter===c?"#0A0A0F":catColor(c),cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".75rem",letterSpacing:".08em",transition:"all .2s"}}>{c}</button>
         ))}
+        <span style={{marginLeft:"auto",color:"#9A9080",fontSize:".85rem"}}>{filtered.length} song{filtered.length!==1?"s":""}</span>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {filtered.map((s,i)=>{
+          const ip = playing===i;
+          const sv = getYouTubeId(s.youtube);
+          return (
+            <div key={i} onClick={()=>setPlaying(ip?null:i)} style={{background:ip?"#1E1A2E":"#12121A",border:`1px solid ${ip?"#B07BE0":"#22223A"}`,padding:"14px 24px",display:"flex",alignItems:"center",gap:16,cursor:"pointer",transition:"all .2s"}}>
+              <div style={{width:42,height:42,borderRadius:"50%",background:ip?"#B07BE0":"rgba(176,123,224,.15)",border:`1px solid ${ip?"#B07BE0":"rgba(176,123,224,.4)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16,color:ip?"#0A0A0F":"#B07BE0",transition:"all .2s"}}>{ip?"⏸":"▶"}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,marginBottom:2,color:ip?"#E8CC7A":"#F0EAD6"}}>{s.title}</div>
+                <div style={{color:"#9A9080",fontSize:".85rem"}}>{s.author}</div>
+              </div>
+              <span style={{padding:"2px 10px",background:`${catColor(s.category)}15`,border:`1px solid ${catColor(s.category)}40`,color:catColor(s.category),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif",flexShrink:0}}>{s.category}</span>
+              <span style={{fontSize:12,color:sv?"#E07B7B":"#3A3A50",flexShrink:0}}>{sv?"▶ YT":"—"}</span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
-
 function Give() {
   const [f,setF]=useState({name:"",type:"tithe",amount:""});
   const [ok,setOk]=useState(false);
@@ -323,7 +375,7 @@ function Give() {
           )}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
+          {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","JRS Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JRS JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
             <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
               <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
               <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
@@ -339,6 +391,30 @@ function Give() {
 function Prayer() {
   const [f,setF]=useState({name:"",req:"",conf:false});
   const [ok,setOk]=useState(false);
+  const submit = () => {
+    if (!f.req) return;
+    const entry = {
+      id: Date.now(),
+      name: f.name.trim() || "Anonymous",
+      req: f.req,
+      conf: f.conf,
+      date: new Date().toLocaleDateString("en-PH",{month:"short",day:"numeric"}),
+      time: new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),
+    };
+    window.__prayerRequests = [entry, ...(window.__prayerRequests||[])];
+    // Add to activity log
+    const logEntry = {
+      icon:"🙏",
+      msg: f.conf
+        ? "A confidential prayer request was submitted"
+        : `New prayer request from ${entry.name}`,
+      role:"Guest",
+      time: entry.date + " · " + entry.time,
+    };
+    window.__activityLog = [logEntry, ...(window.__activityLog||[])];
+    setOk(true);
+    setF({name:"",req:"",conf:false});
+  };
   return (
     <section>
       <Hdr eye="We're Here For You" title="Prayer Requests" sub="Cast your burdens upon the Lord. — Psalm 55:22"/>
@@ -360,7 +436,7 @@ function Prayer() {
                 <input type="checkbox" id="conf" checked={f.conf} onChange={e=>setF({...f,conf:e.target.checked})} style={{width:"auto",accentColor:"#C9A84C"}}/>
                 <label htmlFor="conf" style={{marginBottom:0,textTransform:"none",letterSpacing:0,fontSize:".95rem",cursor:"pointer"}}>🔒 Keep this request confidential</label>
               </div>
-              <button className="btnGold" onClick={()=>{if(f.req)setOk(true);}}>Submit Prayer Request</button>
+              <button className="btnGold" onClick={submit}>Submit Prayer Request</button>
             </div>
           )}
         </div>
@@ -421,7 +497,7 @@ function MembersPanel() {
   ]);
   const [form,setForm]=useState({name:"",role:"",status:"Active",joined:""});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.name||!form.role)return;setMembers([...members,{id:Date.now(),...form}]);setForm({name:"",role:"",status:"Active",joined:""});setAdding(false);};
+  const add=()=>{if(!form.name||!form.role)return;setMembers([...members,{id:Date.now(),...form}]);addLog("👥","New member added: "+form.name,"Head","Kuya Ivan");setForm({name:"",role:"",status:"Active",joined:""});setAdding(false);};
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -467,7 +543,7 @@ function FinancePanel() {
   const [adding,setAdding]=useState(false);
   const totalV=records.filter(r=>r.status==="Verified").reduce((s,r)=>s+r.amount,0);
   const totalP=records.filter(r=>r.status==="Pending").reduce((s,r)=>s+r.amount,0);
-  const add=()=>{if(!form.name||!form.amount)return;setRecords([...records,{id:Date.now(),...form,amount:Number(form.amount)}]);setForm({name:"",type:"Tithe",amount:"",date:"",status:"Pending"});setAdding(false);};
+  const add=()=>{if(!form.name||!form.amount)return;setRecords([...records,{id:Date.now(),...form,amount:Number(form.amount)}]);addLog("💰","Recorded "+form.type+": "+form.name+" — ₱"+form.amount,"Financial","Treasurer/Financial");setForm({name:"",type:"Tithe",amount:"",date:"",status:"Pending"});setAdding(false);};
   return (
     <div>
       <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:24}}>💰 Finance Dashboard</h4>
@@ -516,7 +592,7 @@ function EventsPanel({viewOnly=false}) {
   const [events,setEvents]=useState([...EVENTS]);
   const [form,setForm]=useState({date:"",title:"",time:"",type:"worship"});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.date||!form.title)return;setEvents([...events,{...form}]);setForm({date:"",title:"",time:"",type:"worship"});setAdding(false);};
+  const add=()=>{if(!form.date||!form.title)return;setEvents([...events,{...form}]);addLog("📅","New event: "+form.title+" on "+form.date,"Events Dept","Events Dept");setForm({date:"",title:"",time:"",type:"worship"});setAdding(false);};
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -555,7 +631,7 @@ function AnnouncementsPanel() {
   ]);
   const [form,setForm]=useState({title:"",body:""});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.title||!form.body)return;setPosts([...posts,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),author:"Staff"}]);setForm({title:"",body:""});setAdding(false);};
+  const add=()=>{if(!form.title||!form.body)return;setPosts([...posts,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),author:"Staff"}]);addLog("📢","Announcement posted: "+form.title,"Secretary","Secretary");setForm({title:"",body:""});setAdding(false);};
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -594,7 +670,7 @@ function DocumentsPanel() {
   ]);
   const [form,setForm]=useState({name:"",type:"Meeting Minutes"});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.name)return;setDocs([...docs,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),uploadedBy:"Jam",size:"—"}]);setForm({name:"",type:"Meeting Minutes"});setAdding(false);};
+  const add=()=>{if(!form.name)return;setDocs([...docs,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),uploadedBy:"Jam",size:"—"}]);addLog("📄","Document uploaded: "+form.name+" ("+form.type+")","Secretary","Jam");setForm({name:"",type:"Meeting Minutes"});setAdding(false);};
   const icon=(t)=>t==="Meeting Minutes"?"📝":t==="Member Records"?"👥":t==="Financial Report"?"💰":"📄";
   return (
     <div>
@@ -682,32 +758,156 @@ function AttendancePanel() {
 }
 
 function SongsPanel() {
-  const [songs,setSongs]=useState([...SONGS]);
-  const [form,setForm]=useState({title:"",author:"",category:"Praise"});
-  const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.title)return;setSongs([...songs,{...form}]);setForm({title:"",author:"",category:"Praise"});setAdding(false);};
+  const [songs, setSongs] = useState([...SONGS]);
+  const [playing, setPlaying] = useState(null); // index of currently playing song
+  const [form, setForm] = useState({title:"", author:"", category:"Praise", youtube:""});
+  const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState("All");
+
+  const add = () => {
+    if (!form.title) return;
+    setSongs([...songs, {...form}]);
+    addLog("🎵","Song added: \""+form.title+"\" by "+(form.author||"Unknown"),"Performance","Performance Dept");
+    setForm({title:"", author:"", category:"Praise", youtube:""});
+    setAdding(false);
+  };
+
+  const getYouTubeId = (url) => {
+    if (!url) return null;
+    const match = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+  };
+
+  const categories = ["All", "Praise", "Worship", "Hymn", "Special"];
+  const filtered = filter === "All" ? songs : songs.filter(s => s.category === filter);
+
+  const catColor = (c) => c==="Praise"?"#C9A84C":c==="Worship"?"#B07BE0":c==="Hymn"?"#7B9EF0":c==="Special"?"#E07B7B":"#9A9080";
+
+  const currentSong = playing !== null ? filtered[playing] : null;
+  const youtubeId = currentSong ? getYouTubeId(currentSong.youtube) : null;
+
   return (
     <div>
+      {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
-        <h4 className="font-display" style={{color:"#E8CC7A"}}>🎵 Song List & Worship Schedule</h4>
-        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Song"}</button>
+        <h4 className="font-display" style={{color:"#E8CC7A"}}>🎵 Song List & Music Player</h4>
+        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>
+          {adding ? "Cancel" : "+ Add Song"}
+        </button>
       </div>
-      {adding&&(<div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
-        <div><label>Song Title</label><input placeholder="Title" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
-        <div><label>Author</label><input placeholder="Author / Team" value={form.author} onChange={e=>setForm({...form,author:e.target.value})}/></div>
-        <div><label>Category</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{["Praise","Worship","Hymn","Special"].map(c=><option key={c}>{c}</option>)}</select></div>
-        <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button></div>
-      </div>)}
-      <div className="g2">
-        {songs.map((s,i)=>(
-          <div key={i} className="card" style={{background:"#1A1A28",border:"1px solid #22223A",padding:"16px 20px",display:"flex",alignItems:"center",gap:16}}>
-            <div style={{width:40,height:40,borderRadius:"50%",background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🎵</div>
-            <div style={{flex:1}}><div style={{fontWeight:600,marginBottom:2}}>{s.title}</div><div style={{color:"#9A9080",fontSize:".85rem"}}>{s.author}</div></div>
-            <span className="badge">{s.category}</span>
-            <button onClick={()=>setSongs(songs.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",marginLeft:8}}>✕</button>
+
+      {/* Add Song Form */}
+      {adding && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
+          <div><label>Song Title</label><input placeholder="Title" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
+          <div><label>Author / Team</label><input placeholder="Author" value={form.author} onChange={e=>setForm({...form,author:e.target.value})}/></div>
+          <div><label>Category</label>
+            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>
+              {["Praise","Worship","Hymn","Special"].map(c=><option key={c}>{c}</option>)}
+            </select>
           </div>
+          <div><label>YouTube Link</label><input placeholder="https://youtube.com/watch?v=..." value={form.youtube} onChange={e=>setForm({...form,youtube:e.target.value})}/></div>
+          <div style={{display:"flex",alignItems:"flex-end"}}>
+            <button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button>
+          </div>
+        </div>
+      )}
+
+      {/* Now Playing */}
+      {currentSong && (
+        <div style={{background:"#12121A",border:"1px solid #B07BE0",padding:0,marginBottom:24,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#B07BE0,transparent)"}}/>
+          <div style={{padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div>
+              <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".12em",color:"#B07BE0",marginBottom:4}}>▶ NOW PLAYING</div>
+              <div style={{fontWeight:700,fontSize:"1.05rem"}}>{currentSong.title}</div>
+              <div style={{color:"#9A9080",fontSize:".85rem"}}>{currentSong.author}</div>
+            </div>
+            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+              <button onClick={()=>setPlaying(playing > 0 ? playing-1 : filtered.length-1)}
+                style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:36,height:36,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏮</button>
+              <button onClick={()=>setPlaying(null)}
+                style={{background:"rgba(224,123,123,.15)",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",width:36,height:36,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏹</button>
+              <button onClick={()=>setPlaying(playing < filtered.length-1 ? playing+1 : 0)}
+                style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:36,height:36,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏭</button>
+            </div>
+          </div>
+          {/* YouTube embed */}
+          {youtubeId ? (
+            <div style={{position:"relative",paddingBottom:"42%",background:"#000"}}>
+              <iframe
+                src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`}
+                style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : (
+            <div style={{padding:"32px 20px",textAlign:"center",color:"#9A9080",fontSize:".9rem",background:"#0A0A0F"}}>
+              🎵 No YouTube link for this song. <span style={{color:"#C9A84C"}}>Add a link to enable playback.</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Category filter */}
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        {categories.map(c=>(
+          <button key={c} onClick={()=>{setFilter(c);setPlaying(null);}}
+            style={{padding:"6px 16px",background:filter===c?catColor(c):"transparent",border:`1px solid ${filter===c?catColor(c):"#22223A"}`,color:filter===c?"#0A0A0F":catColor(c),cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".75rem",letterSpacing:".08em",transition:"all .2s"}}>
+            {c}
+          </button>
         ))}
+        <span style={{marginLeft:"auto",color:"#9A9080",fontSize:".85rem",alignSelf:"center"}}>{filtered.length} song{filtered.length!==1?"s":""}</span>
       </div>
+
+      {/* Song list */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {filtered.map((s, i) => {
+          const isPlaying = playing === i;
+          const vid = getYouTubeId(s.youtube);
+          return (
+            <div key={i} style={{background:isPlaying?"#1E1A2E":"#1A1A28",border:`1px solid ${isPlaying?"#B07BE0":"#22223A"}`,padding:"14px 20px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",transition:"all .2s"}}
+              onClick={()=>setPlaying(isPlaying ? null : i)}>
+              {/* Play/pause icon */}
+              <div style={{width:40,height:40,borderRadius:"50%",background:isPlaying?"#B07BE0":"rgba(176,123,224,.15)",border:`1px solid ${isPlaying?"#B07BE0":"rgba(176,123,224,.4)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s",fontSize:16,color:isPlaying?"#0A0A0F":"#B07BE0"}}>
+                {isPlaying ? "⏸" : "▶"}
+              </div>
+              {/* Song info */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,marginBottom:2,color:isPlaying?"#E8CC7A":"#F0EAD6"}}>{s.title}</div>
+                <div style={{color:"#9A9080",fontSize:".85rem"}}>{s.author}</div>
+              </div>
+              {/* Category badge */}
+              <span style={{padding:"2px 10px",background:`${catColor(s.category)}15`,border:`1px solid ${catColor(s.category)}40`,color:catColor(s.category),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif",flexShrink:0}}>
+                {s.category}
+              </span>
+              {/* YouTube indicator */}
+              <span style={{fontSize:13,color:vid?"#E07B7B":"#3A3A50",flexShrink:0}} title={vid?"Has YouTube link":"No YouTube link"}>
+                {vid ? "▶ YT" : "—"}
+              </span>
+              {/* Remove */}
+              <button
+                style={{background:"none",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",cursor:"pointer",fontSize:".75rem",flexShrink:0,padding:"4px 10px",fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".05em",transition:"all .2s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background="rgba(224,123,123,.15)";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="none";}}
+                onClick={e=>{
+                  e.stopPropagation();
+                  const actualIndex = songs.indexOf(s);
+                  if (playing === i) setPlaying(null);
+                  else if (playing !== null && playing > i) setPlaying(playing - 1);
+                  setSongs(songs.filter((_, j) => j !== actualIndex));
+                }}>
+                🗑 Delete
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 && (
+        <div style={{textAlign:"center",padding:"40px 0",color:"#9A9080"}}>No songs in this category.</div>
+      )}
     </div>
   );
 }
@@ -719,7 +919,7 @@ function DevotionPanel() {
   ]);
   const [form,setForm]=useState({name:"",book:"",insight:""});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.name||!form.insight)return;setDevotions([...devotions,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),likes:0}]);setForm({name:"",book:"",insight:""});setAdding(false);};
+  const add=()=>{if(!form.name||!form.insight)return;setDevotions([...devotions,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),likes:0}]);addLog("📖",form.name+" shared a devotion from "+(form.book||"the Bible"),"Member",form.name);setForm({name:"",book:"",insight:""});setAdding(false);};
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -767,6 +967,7 @@ function GivingHistoryPanel() {
     if(!form.amount)return;
     const d=new Date().toLocaleString("en-PH",{month:"short",day:"numeric"});
     setRecords([...records,{id:Date.now(),type:form.type,amount:Number(form.amount),date:d}]);
+    addLog("💸","Member submitted a "+form.type+" offering \u2014 \u20b1"+form.amount,"Member","Member");
     setForm({type:"Tithe",amount:"",note:""});setOk(true);
     setTimeout(()=>{setOk(false);setGiving(false);},2500);
   };
@@ -793,8 +994,8 @@ function GivingHistoryPanel() {
               <div><label>Note (Optional)</label><input placeholder="e.g. For Easter Sunday" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
             </div>
             <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,marginBottom:20,fontSize:".85rem",color:"#9A9080",lineHeight:1.9}}>
-              📱 <span style={{color:"#C9A84C"}}>GCash:</span> Church Fund · 09XX-XXX-XXXX<br/>
-              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JTROS Mission · XXXX-XXXX-XXXX<br/>
+              📱 <span style={{color:"#C9A84C"}}>GCash:</span> JRS Church Fund · 09XX-XXX-XXXX<br/>
+              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JRS JTROS Mission · XXXX-XXXX-XXXX<br/>
               <span style={{fontSize:".8rem"}}>Please send payment before confirming.</span>
             </div>
             <button className="btnGold" style={{padding:"12px 28px"}} onClick={submit}>Confirm Offering →</button>
@@ -1243,27 +1444,182 @@ function ExportPanel() {
 }
 
 
+
+// ── REHEARSAL SCHEDULE PANEL ─────────────────────────────────────────────────
+function RehearsalPanel() {
+  const [schedules, setSchedules] = useState([
+    {id:1, title:"Sunday Worship Rehearsal", date:"Mar 8 (Sat)", time:"3:00 PM", venue:"Main Hall", members:["Precious","Krislene"], status:"Confirmed"},
+    {id:2, title:"Easter Special Rehearsal", date:"Mar 22 (Sat)", time:"4:00 PM", venue:"Main Hall", members:["Precious","Krislene"], status:"Confirmed"},
+    {id:3, title:"Monthly Praise Night Prep", date:"Mar 29 (Sat)", time:"3:00 PM", venue:"Chapel", members:["Precious","Krislene"], status:"Tentative"},
+  ]);
+  const [form, setForm] = useState({title:"",date:"",time:"",venue:"",status:"Confirmed"});
+  const [adding, setAdding] = useState(false);
+  const add = () => {
+    if(!form.title||!form.date) return;
+    setSchedules([...schedules,{id:Date.now(),...form,members:["Performance Dept"]}]);
+    addLog("🎭","Rehearsal scheduled: \""+form.title+"\" on "+form.date,"Performance","Performance Dept");
+    setForm({title:"",date:"",time:"",venue:"",status:"Confirmed"});
+    setAdding(false);
+  };
+  const statusColor = (s) => s==="Confirmed" ? "#7BE0B0" : s==="Tentative" ? "#E0B07B" : "#E07B7B";
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <h4 className="font-display" style={{color:"#E8CC7A"}}>🎭 Rehearsal Schedule</h4>
+        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Schedule"}</button>
+      </div>
+      {adding && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
+          <div><label>Title</label><input placeholder="Rehearsal name" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
+          <div><label>Date</label><input placeholder="Mar 15 (Sat)" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
+          <div><label>Time</label><input placeholder="3:00 PM" value={form.time} onChange={e=>setForm({...form,time:e.target.value})}/></div>
+          <div><label>Venue</label><input placeholder="Main Hall" value={form.venue} onChange={e=>setForm({...form,venue:e.target.value})}/></div>
+          <div><label>Status</label>
+            <select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+              {["Confirmed","Tentative","Cancelled"].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div style={{display:"flex",alignItems:"flex-end"}}>
+            <button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button>
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",flexDirection:"column",gap:16}}>
+        {schedules.map(s=>(
+          <div key={s.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${statusColor(s.status)},transparent)`}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,flexWrap:"wrap"}}>
+                  <h5 style={{fontWeight:700,fontSize:"1rem"}}>{s.title}</h5>
+                  <span style={{padding:"2px 10px",background:`${statusColor(s.status)}15`,border:`1px solid ${statusColor(s.status)}50`,color:statusColor(s.status),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>{s.status}</span>
+                </div>
+                <div style={{display:"flex",gap:20,flexWrap:"wrap",color:"#9A9080",fontSize:".9rem"}}>
+                  <span>📅 {s.date}</span>
+                  <span>🕐 {s.time}</span>
+                  {s.venue && <span>📍 {s.venue}</span>}
+                </div>
+                {s.members?.length > 0 && (
+                  <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {s.members.map(m=>(
+                      <span key={m} style={{padding:"2px 10px",background:"rgba(176,123,224,.1)",border:"1px solid rgba(176,123,224,.3)",color:"#B07BE0",fontSize:".75rem"}}>{m}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button onClick={()=>setSchedules(schedules.filter(x=>x.id!==s.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem",flexShrink:0}}>Remove</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── PRACTICE MATERIALS PANEL ─────────────────────────────────────────────────
+function PracticePanel() {
+  const [materials, setMaterials] = useState([
+    {id:1, title:"Easter Sunday Song Set", type:"Song List", file:"easter_songs.pdf", uploadedBy:"Precious", date:"Mar 1", notes:"3 songs — include harmony parts"},
+    {id:2, title:"Worship Chords — March", type:"Chords Sheet", file:"march_chords.pdf", uploadedBy:"Precious", date:"Mar 2", notes:"Updated chord sheets for all worship songs"},
+    {id:3, title:"Performance Blocking Script", type:"Script", file:"blocking.docx", uploadedBy:"Krislene", date:"Mar 3", notes:"Stage positions for Easter presentation"},
+    {id:4, title:"Vocal Warm-Up Guide", type:"Guide", file:"warmup.pdf", uploadedBy:"Precious", date:"Mar 3", notes:"Use before every rehearsal"},
+  ]);
+  const [form, setForm] = useState({title:"",type:"Song List",file:"",notes:""});
+  const [adding, setAdding] = useState(false);
+  const add = () => {
+    if(!form.title) return;
+    setMaterials([...materials,{id:Date.now(),...form,uploadedBy:"Performance Dept",date:"Mar "+new Date().getDate()}]);
+    addLog("📚","Practice material uploaded: \""+form.title+"\" ("+form.type+")","Performance","Performance Dept");
+    setForm({title:"",type:"Song List",file:"",notes:""});
+    setAdding(false);
+  };
+  const typeIcon = (t) => t==="Song List"?"🎵":t==="Chords Sheet"?"🎸":t==="Script"?"📋":t==="Guide"?"📖":"📄";
+  const typeColor = (t) => t==="Song List"?"#B07BE0":t==="Chords Sheet"?"#7BE0B0":t==="Script"?"#E0B07B":t==="Guide"?"#7B9EF0":"#C9A84C";
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <h4 className="font-display" style={{color:"#E8CC7A"}}>📚 Practice Materials</h4>
+        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Upload Material"}</button>
+      </div>
+      {adding && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
+            <div><label>Title</label><input placeholder="Material title" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
+            <div><label>Type</label>
+              <select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+                {["Song List","Chords Sheet","Script","Guide","Video Link","Other"].map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label>File / Link Name</label><input placeholder="filename.pdf" value={form.file} onChange={e=>setForm({...form,file:e.target.value})}/></div>
+          </div>
+          <div><label>Notes</label><input placeholder="Additional notes..." value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
+          <div style={{border:"2px dashed #22223A",padding:24,textAlign:"center",color:"#9A9080",fontSize:".9rem",cursor:"pointer"}}>
+            📎 Click to attach file
+          </div>
+          <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 24px",fontSize:".75rem"}} onClick={add}>Save Material</button>
+        </div>
+      )}
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {materials.map(m=>(
+          <div key={m.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+            <div style={{display:"flex",gap:14,alignItems:"flex-start",flex:1}}>
+              <div style={{width:44,height:44,background:`${typeColor(m.type)}15`,border:`1px solid ${typeColor(m.type)}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{typeIcon(m.type)}</div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                  <div style={{fontWeight:700,fontSize:".95rem"}}>{m.title}</div>
+                  <span style={{padding:"2px 8px",background:`${typeColor(m.type)}15`,border:`1px solid ${typeColor(m.type)}40`,color:typeColor(m.type),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>{m.type}</span>
+                </div>
+                {m.file && <div style={{color:"#C9A84C",fontSize:".85rem",marginBottom:4}}>📄 {m.file}</div>}
+                {m.notes && <div style={{color:"#9A9080",fontSize:".85rem",marginBottom:4}}>{m.notes}</div>}
+                <div style={{color:"#9A9080",fontSize:".8rem"}}>Uploaded {m.date} by {m.uploadedBy}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:12,flexShrink:0}}>
+              <button style={{background:"none",border:"none",color:"#C9A84C",cursor:"pointer",fontSize:".85rem"}}>⬇ Download</button>
+              <button onClick={()=>setMaterials(materials.filter(x=>x.id!==m.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── DASHBOARD OVERVIEW PANEL ─────────────────────────────────────────────────
 function DashboardOverviewPanel() {
+  const [prayers, setPrayers] = useState(window.__prayerRequests || []);
+  const [logs, setLogs] = useState(window.__activityLog || []);
+  const [tab, setTab] = useState("log"); // "log" | "prayers"
+  const [refresh, setRefresh] = useState(0);
+
+  // Poll for new data every 3 seconds (simulates real-time)
+  useEffect(() => {
+    const t = setInterval(() => {
+      setPrayers([...(window.__prayerRequests||[])]);
+      setLogs([...(window.__activityLog||[])]);
+    }, 3000);
+    return () => clearInterval(t);
+  }, []);
+
   const stats = [
-    {icon:"👥", label:"Total Members",    value:"10",    color:"#7BE0B0", sub:"Active this month"},
-    {icon:"💰", label:"March Offerings",  value:"₱1,250",color:"#C9A84C", sub:"Verified: ₱850"},
-    {icon:"🗓", label:"Upcoming Events",  value:"6",     color:"#E07B7B", sub:"Next: Mar 9 Sunday"},
-    {icon:"🙏", label:"Prayer Requests",  value:"8",     color:"#B07BE0", sub:"Submitted this week"},
-    {icon:"✅", label:"Last Attendance",  value:"5/10",  color:"#7B9EF0", sub:"Mar 2 Sunday Service"},
-    {icon:"🎵", label:"Active Ministries",value:"6",     color:"#E0B07B", sub:"All departments active"},
+    {icon:"👥", label:"Total Members",    value:"10",     color:"#7BE0B0", sub:"Active this month"},
+    {icon:"💰", label:"March Offerings",  value:"₱1,250", color:"#C9A84C", sub:"Verified: ₱850"},
+    {icon:"🗓", label:"Upcoming Events",  value:"6",      color:"#E07B7B", sub:"Next: Mar 9 Sunday"},
+    {icon:"🙏", label:"Prayer Requests",  value:prayers.length, color:"#B07BE0", sub:`${prayers.filter(p=>!p.conf).length} public · ${prayers.filter(p=>p.conf).length} confidential`},
+    {icon:"✅", label:"Last Attendance",  value:"5/10",   color:"#7B9EF0", sub:"Mar 2 Sunday Service"},
+    {icon:"🎵", label:"Active Ministries",value:"6",      color:"#E0B07B", sub:"All departments active"},
   ];
-  const recent = [
-    {msg:"Kuya Ivan submitted Tithe — ₱500", time:"Mar 1", icon:"💰"},
-    {msg:"Easter Sunday Special added to events", time:"Mar 1", icon:"🗓"},
-    {msg:"New announcement posted by Secretary", time:"Mar 2", icon:"📢"},
-    {msg:"Attendance recorded — 5/10 present", time:"Mar 2", icon:"✅"},
-    {msg:"New prayer request submitted", time:"Mar 3", icon:"🙏"},
-  ];
+
+  const roleColor = (r) =>
+    r==="Head"?"#C9A84C":r==="Treasurer"?"#7BE0B0":r==="Financial"?"#7B9EF0":
+    r==="Events Dept"?"#E07B7B":r==="Secretary"?"#E0B07B":r==="Performance"?"#B07BE0":"#9A9080";
+
   return (
     <div>
       <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:8}}>📊 Dashboard Overview</h4>
       <p style={{color:"#9A9080",marginBottom:28,fontSize:".95rem"}}>Church summary at a glance — March 2026.</p>
+
+      {/* Stats */}
       <div className="g3" style={{marginBottom:32}}>
         {stats.map(s=>(
           <div key={s.label} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"22px 24px",position:"relative",overflow:"hidden"}}>
@@ -1279,19 +1635,73 @@ function DashboardOverviewPanel() {
           </div>
         ))}
       </div>
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,position:"relative"}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
-        <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".12em",color:"#C9A84C",marginBottom:20,textTransform:"uppercase"}}>Recent Activity</div>
-        <div style={{display:"flex",flexDirection:"column",gap:0}}>
-          {recent.map((r,i)=>(
-            <div key={i} style={{display:"flex",gap:16,alignItems:"center",padding:"12px 0",borderBottom:i<recent.length-1?"1px solid #22223A":"none"}}>
-              <div style={{width:36,height:36,background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{r.icon}</div>
-              <div style={{flex:1}}><div style={{fontSize:".9rem",color:"#F0EAD6"}}>{r.msg}</div></div>
-              <div style={{fontSize:".8rem",color:"#9A9080",flexShrink:0}}>{r.time}</div>
-            </div>
-          ))}
-        </div>
+
+      {/* Tab switcher */}
+      <div style={{display:"flex",gap:0,marginBottom:0,borderBottom:"1px solid #22223A"}}>
+        {[["log","📋 Activity Log"],["prayers","🙏 Prayer Requests"]].map(([k,lbl])=>(
+          <button key={k} onClick={()=>setTab(k)}
+            style={{padding:"12px 24px",background:"none",border:"none",borderBottom:tab===k?"2px solid #C9A84C":"2px solid transparent",color:tab===k?"#E8CC7A":"#9A9080",cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".8rem",letterSpacing:".08em",transition:"all .2s",marginBottom:"-1px"}}>
+            {lbl}
+            {k==="prayers" && prayers.length > 0 && (
+              <span style={{marginLeft:8,background:"#B07BE0",color:"#fff",borderRadius:"50%",width:18,height:18,fontSize:".65rem",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{prayers.length}</span>
+            )}
+          </button>
+        ))}
       </div>
+
+      {/* Activity Log Tab */}
+      {tab==="log" && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",borderTop:"none",padding:28,position:"relative"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".12em",color:"#C9A84C",textTransform:"uppercase"}}>Recent Activity</div>
+            <span style={{fontSize:".8rem",color:"#9A9080"}}>{logs.length} entries</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:0}}>
+            {logs.slice(0,15).map((r,i)=>(
+              <div key={i} style={{display:"flex",gap:14,alignItems:"flex-start",padding:"11px 0",borderBottom:i<Math.min(logs.length,15)-1?"1px solid #22223A":"none"}}>
+                <div style={{width:34,height:34,background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>{r.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:".9rem",color:"#F0EAD6",marginBottom:3}}>{r.msg}</div>
+                  <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
+                    {r.user && r.user !== r.role && <span style={{padding:"1px 8px",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.14)",color:"#E8CC7A",fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>👤 {r.user}</span>}
+                    <span style={{padding:"1px 8px",background:`${roleColor(r.role)}15`,border:`1px solid ${roleColor(r.role)}40`,color:roleColor(r.role),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>{r.role}</span>
+                  </div>
+                </div>
+                <div style={{fontSize:".78rem",color:"#9A9080",flexShrink:0,textAlign:"right"}}>{r.time}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Prayer Requests Tab */}
+      {tab==="prayers" && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",borderTop:"none",padding:28}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".12em",color:"#B07BE0",textTransform:"uppercase"}}>All Prayer Requests</div>
+            <span style={{fontSize:".8rem",color:"#9A9080"}}>{prayers.length} total</span>
+          </div>
+          {prayers.length === 0 && <div style={{textAlign:"center",padding:"32px 0",color:"#9A9080"}}>No prayer requests yet.</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {prayers.map((p,i)=>(
+              <div key={p.id||i} style={{background:"#12121A",border:`1px solid ${p.conf?"rgba(176,123,224,.3)":"#22223A"}`,padding:"16px 20px",position:"relative"}}>
+                {p.conf && <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#B07BE0,transparent)"}}/>}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,flexWrap:"wrap",gap:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontWeight:700,color:p.conf?"#B07BE0":"#E8CC7A"}}>{p.name}</span>
+                    {p.conf && <span style={{padding:"2px 8px",background:"rgba(176,123,224,.1)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>🔒 Confidential</span>}
+                  </div>
+                  <span style={{fontSize:".8rem",color:"#9A9080"}}>{p.date} · {p.time}</span>
+                </div>
+                <div style={{color:"#B0A898",fontSize:".95rem",lineHeight:1.7}}>{p.req}</div>
+                <div style={{display:"flex",gap:12,marginTop:12}}>
+                  <button onClick={()=>{window.__prayerRequests=(window.__prayerRequests||[]).filter(x=>x.id!==p.id);setPrayers([...window.__prayerRequests]);}} style={{background:"none",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",cursor:"pointer",padding:"4px 12px",fontSize:".75rem",fontFamily:"'Tenor Sans',sans-serif"}}>✓ Mark Prayed</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1386,7 +1796,8 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
   // expose setter so nav avatar can open profile
   useEffect(() => {
     window.__openProfile = () => setActivePanel("My Profile");
-    return () => { delete window.__openProfile; };
+    window.__closePanels = () => setActivePanel(null);
+    return () => { delete window.__openProfile; delete window.__closePanels; };
   }, []);
 
   const getPanel = (name) => {
@@ -1402,8 +1813,9 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
     if(n.includes("document"))                                      return <DocumentsPanel/>;
     if(n.includes("attendance")||n.includes("visitor")||n.includes("follow"))
                                                                     return <AttendancePanel/>;
-    if(n.includes("song")||n.includes("worship")||n.includes("rehearsal")||
-       n.includes("practice"))                                      return <SongsPanel/>;
+    if(n.includes("rehearsal")||n.includes("rehearsal schedule"))  return <RehearsalPanel/>;
+    if(n.includes("practice")||n.includes("practice materials"))    return <PracticePanel/>;
+    if(n.includes("song")||n.includes("worship"))                   return <SongsPanel/>;
     if(n.includes("devotion"))                                      return <DevotionPanel/>;
     if(n.includes("giving"))                                        return <GivingHistoryPanel/>;
     if(n.includes("profile"))                                       return <ProfilePanel user={user} onUpdateUser={onUpdateUser}/>;
@@ -1460,6 +1872,25 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
 }
 
 // ── APP ───────────────────────────────────────────────────────────────────────
+// ── GLOBAL ACTIVITY LOG (in-memory, shared across components) ────────────────
+if (!window.__prayerRequests) window.__prayerRequests = [
+  {id:1, name:"Anonymous",    req:"Please pray for my family's healing.",          conf:false, date:"Mar 1", time:"9:12 AM"},
+  {id:2, name:"Kuya Ivan",    req:"Prayer for this Sunday's sermon preparation.",   conf:false, date:"Mar 2", time:"10:05 AM"},
+  {id:3, name:"Church Member",req:"Confidential prayer request.",                   conf:true,  date:"Mar 2", time:"11:30 AM"},
+  {id:4, name:"Ange",         req:"Prayer for wisdom in managing the finances.",    conf:false, date:"Mar 3", time:"8:45 AM"},
+  {id:5, name:"Anonymous",    req:"Please intercede for a sick loved one.",         conf:false, date:"Mar 3", time:"2:00 PM"},
+];
+if (!window.__activityLog) window.__activityLog = [
+  {icon:"🙏", msg:"Prayer submitted — For our church family",           role:"Member",      user:"Anonymous",  time:"Mar 3 · 10:30 AM"},
+  {icon:"💰", msg:"Recorded Tithe: Kuya Ivan — ₱500",              role:"Financial",   user:"Angie",      time:"Mar 1 · 09:15 AM"},
+  {icon:"📅", msg:"New event: Easter Sunday Special on Apr 20",         role:"Events Dept", user:"Ced",        time:"Mar 1 · 08:00 AM"},
+  {icon:"📢", msg:"Announcement posted: Holy Week Schedule",            role:"Secretary",   user:"Jam",        time:"Mar 2 · 11:00 AM"},
+  {icon:"🎵", msg:"Song added: How Great Is Our God by Chris Tomlin",   role:"Performance", user:"Precious",   time:"Mar 2 · 02:00 PM"},
+  {icon:"📄", msg:"Document uploaded: March Minutes.pdf",               role:"Secretary",   user:"Tine",       time:"Mar 2 · 03:30 PM"},
+  {icon:"🎭", msg:"Rehearsal scheduled: Sunday Worship Rehearsal",      role:"Performance", user:"Krislene",   time:"Mar 3 · 09:00 AM"},
+  {icon:"✅",    msg:"Attendance recorded — 5/10 present",                role:"Secretary",   user:"Tine",       time:"Mar 2 · 09:45 AM"},
+];
+
 export default function App() {
   const [page, setPage]       = useState("Home");
   const [menu, setMenu]       = useState(false);
@@ -1473,7 +1904,13 @@ export default function App() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  const go = (p) => { setPage(p); setMenu(false); window.scrollTo(0, 0); };
+  const go = (p) => {
+    if (p === "Dashboard" && page === "Dashboard") {
+      if (window.__closePanels) window.__closePanels();
+      setMenu(false); window.scrollTo(0, 0); return;
+    }
+    setPage(p); setMenu(false); window.scrollTo(0, 0);
+  };
   const login = (u) => { setUser(u); setPage("Dashboard"); };
   const logout = () => { setUser(null); setPage("Home"); };
 
@@ -1517,11 +1954,11 @@ export default function App() {
         <div style={{maxWidth:1200,margin:"0 auto",height:64,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
 
           {/* Logo */}
-          <div style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>go("Home")}>
+          <div style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>user ? go("Dashboard") : go("Home")}>
             <div style={{fontSize:22,color:"#C9A84C"}}>✞</div>
             <div>
               <div className="font-display" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>JESUS THE ROCK</div>
-              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION</div>
+              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION ·</div>
             </div>
           </div>
 
@@ -1552,9 +1989,9 @@ export default function App() {
             ) : (
               /* ── OTHER ROLES: Home + avatar chip only ── */
               <>
-                <span className={`navLink font-sans ${page==="Home"?"active":""}`}
+                <span className={`navLink font-sans ${page==="Dashboard"?"active":""}`}
                   style={{fontSize:".75rem",letterSpacing:".1em",textTransform:"uppercase"}}
-                  onClick={()=>go("Home")}>Home</span>
+                  onClick={()=>go("Dashboard")}>Home</span>
                 <div onClick={openProfile}
                   style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 14px",border:`1px solid ${user.color}60`,background:`${user.color}15`,transition:"all .3s",borderRadius:2}}
                   onMouseEnter={e=>e.currentTarget.style.background=`${user.color}30`}
@@ -1616,13 +2053,13 @@ export default function App() {
       </nav>
 
       {page!=="Home"&&<div style={{height:64}}/>}
-      <main key={page} className="aFadeUp">{renderPage()}</main>
+      <main key={user ? "auth" : page} className="aFadeUp">{renderPage()}</main>
 
       <footer style={{background:"#080810",borderTop:"1px solid rgba(201,168,76,.15)",padding:"60px 32px 32px",textAlign:"center"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{fontSize:32,color:"#C9A84C",marginBottom:16}}>✞</div>
           <div className="font-display goldText" style={{fontSize:"1.1rem",marginBottom:8}}>Jesus The Rock of Our Salvation Mission Church</div>
-          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}> · SERVING BY FAITH</div>
+          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>· SERVING BY FAITH</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:24}}>
             <span style={{color:"#9A9080",fontStyle:"italic",fontSize:".95rem"}}>"He only is my rock and my salvation; he is my defence; I shall not be moved." — Psalm 62:6</span>
           </div>
@@ -1631,7 +2068,8 @@ export default function App() {
               <span key={n} className="navLink font-sans" style={{fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer",color:"#9A9080"}} onClick={()=>go(n)}>{n}</span>
             ))}
           </div>
-          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Morisoul. All rights reserved.</div>
+          {/* <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Jesus The Rock of Our Salvation Mission Church · Built with Faith</div> */}
+          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Morisoul</div>
         </div>
       </footer>
     </>

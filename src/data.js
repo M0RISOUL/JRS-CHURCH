@@ -26,10 +26,14 @@ export const EVENTS = [
 ];
 
 export const SONGS = [
-  { title: "Rock of My Salvation",  author: "Worship Team", category: "Praise"  },
-  { title: "Sa Iyo Ang Papuri",     author: "Worship Team", category: "Worship" },
-  { title: "Ikaw Ang Aming Bato",   author: "Worship Team", category: "Hymn"    },
-  { title: "Foundation of My Life", author: "Worship Team", category: "Praise"  },
+  { title: "Rock of My Salvation",      author: "D2 Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
+  { title: "Sa Iyo Ang Papuri",         author: "D2 Worship Team",     category: "Worship",  youtube: "https://www.youtube.com/watch?v=LMnN7DHuMg0" },
+  { title: "Ikaw Ang Aming Bato",       author: "D2 Worship Team",     category: "Hymn",     youtube: "https://www.youtube.com/watch?v=Tq9PbHTSWD0" },
+  { title: "Foundation of My Life",     author: "D2 Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
+  { title: "How Great Is Our God",      author: "Chris Tomlin",        category: "Worship",  youtube: "https://www.youtube.com/watch?v=KBD18rsVJHk" },
+  { title: "Blessed Be Your Name",      author: "Matt Redman",         category: "Praise",   youtube: "https://www.youtube.com/watch?v=VZBXO8qJuN4" },
+  { title: "10,000 Reasons (Bless the Lord)", author: "Matt Redman",  category: "Worship",  youtube: "https://www.youtube.com/watch?v=DXDGE_lRI0E" },
+  { title: "Way Maker",                 author: "Sinach",              category: "Praise",   youtube: "https://www.youtube.com/watch?v=iom4PNq_gMg" },
 ];
 
 export const NAV_ITEMS = ["Home","About","Ministries","Events","Media","Give","Prayer","Login"];
@@ -61,7 +65,7 @@ export const ACCOUNTS = [
     username: "ivan", password: "head2026", role: "head",
     fullName: "Kuya Ivan", contact: "09XX-XXX-0001",
     address: "Pasig City", birthday: "Jan 1, 1990",
-    joinedDate: "January 2024", bio: "Head and overall leader of Church.",
+    joinedDate: "January 2024", bio: "Head and overall leader of D2 Church.",
   },
   {
     username: "ange", password: "treasurer2026", role: "treasurer",
@@ -121,6 +125,6 @@ export const ACCOUNTS = [
     username: "member", password: "member2026", role: "member",
     fullName: "Church Member", contact: "09XX-XXX-0000",
     address: "Pasig City", birthday: "—",
-    joinedDate: "March 2024", bio: "Faithful member of JTROS Mission Church.",
+    joinedDate: "March 2024", bio: "Faithful member of D2 JTROS Mission Church.",
   },
 ];
