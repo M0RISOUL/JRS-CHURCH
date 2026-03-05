@@ -147,7 +147,7 @@ function Home({go}) {
         <div style={{position:"relative",zIndex:2,animation:"fadeUp 1s ease forwards"}}>
           <div className="aCross" style={{width:100,height:100,margin:"0 auto 32px",background:"radial-gradient(circle,rgba(201,168,76,.2),transparent)",border:"2px solid rgba(201,168,76,.4)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>✞</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:16}}>
-            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>D2 · Est. by Faith</span>
+            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>Est. by Faith</span>
           </div>
           <h1 className="font-display heroTitle goldText" style={{fontSize:"clamp(1.6rem,5vw,3.2rem)",lineHeight:1.3,marginBottom:12,maxWidth:700}}>
             Jesus The Rock<br/>of Our Salvation<br/>Mission Church
@@ -213,7 +213,7 @@ function Home({go}) {
       </div>
       <section>
         <div style={{maxWidth:700,margin:"0 auto",textAlign:"center"}}>
-          <Hdr eye="A Word From Our Head" title="Welcome to D2 Church"/>
+          <Hdr eye="A Word From Our Head" title="Welcome to JRS Church"/>
           <p style={{fontSize:"1.2rem",lineHeight:2,color:"#B0A898",fontStyle:"italic",marginBottom:32}}>
             "Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."
           </p>
@@ -404,7 +404,7 @@ function Give() {
     <section>
       <Hdr eye="Give & Support" title="Online Offering" sub="Bring the whole tithe into the storehouse. — Malachi 3:10"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:24,marginBottom:48}}>
-        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","D2 Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","D2 JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
+        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","JRS Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JRS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
           <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
             <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
@@ -1502,8 +1502,8 @@ function GivingHistoryPanel() {
               <div><label>Note (Optional)</label><input placeholder="e.g. For Easter Sunday" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
             </div>
             <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,marginBottom:20,fontSize:".85rem",color:"#9A9080",lineHeight:1.9}}>
-              📱 <span style={{color:"#C9A84C"}}>GCash:</span> D2 Church Fund · 09XX-XXX-XXXX<br/>
-              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> D2 JTROS Mission · XXXX-XXXX-XXXX<br/>
+              📱 <span style={{color:"#C9A84C"}}>GCash:</span> JRS Church Fund · 09XX-XXX-XXXX<br/>
+              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JRS Mission · XXXX-XXXX-XXXX<br/>
               <span style={{fontSize:".8rem"}}>Please send payment before confirming.</span>
             </div>
             <button className="btnGold" style={{padding:"12px 28px"}} onClick={submit}>Confirm Offering →</button>
@@ -1902,7 +1902,7 @@ function ExportPanel() {
       td{padding:9px 12px;border-bottom:1px solid #eee}tr:nth-child(even) td{background:#f9f9f9}
       .footer{margin-top:24px;font-size:11px;color:#999}
     </style></head><body>
-      <h2>${title}</h2><p>D2 Jesus The Rock of Our Salvation Mission Church · Generated ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</p>
+      <h2>${title}</h2><p>Jesus The Rock of Our Salvation Mission Church · Generated ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</p>
       <table><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join("")}</tr></thead>
       <tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${r[c.key]||"—"}</td>`).join("")}</tr>`).join("")}</tbody></table>
       <div class="footer">Total records: ${rows.length}</div>
@@ -2009,7 +2009,7 @@ function ExportPanel() {
 function SystemSettingsPanel({user, onUpdateUser}) {
   const [tab, setTab] = useState("general");
   const [settings, setSettings] = useState({
-    churchName: "D2 Jesus The Rock of Our Salvation Mission Church",
+    churchName: "Jesus The Rock of Our Salvation Mission Church",
     tagline:    "He only is my rock and my salvation — Psalm 62:6",
     gcash:      "09XX-XXX-XXXX",
     bank:       "XXXX-XXXX-XXXX",
@@ -2026,8 +2026,8 @@ function SystemSettingsPanel({user, onUpdateUser}) {
 
   // Page Content State
   const [pageContent, setPageContent] = useState({
-    home:       { hero: "Welcome to D2 Jesus The Rock of Our Salvation", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
-    about:      { title: "About Our Church", body: "D2 Jesus The Rock of Our Salvation Mission Church is a growing community of believers dedicated to spreading the Gospel and nurturing disciples of Christ.", vision: "To be a church that reflects the love and grace of Jesus Christ.", mission: "To make disciples of all nations through worship, fellowship, and service." },
+    home:       { hero: "Welcome to Jesus The Rock of Our Salvation", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
+    about:      { title: "About Our Church", body: "Jesus The Rock of Our Salvation Mission Church is a growing community of believers dedicated to spreading the Gospel and nurturing disciples of Christ.", vision: "To be a church that reflects the love and grace of Jesus Christ.", mission: "To make disciples of all nations through worship, fellowship, and service." },
     ministries: { intro: "We have various ministries designed to help every member grow in faith and serve the community." },
     events:     { intro: "Join us for our upcoming events and gatherings. Everyone is welcome!" },
     media:      { intro: "Watch our latest sermons and worship sessions. Be blessed wherever you are." },
@@ -2617,7 +2617,7 @@ export default function App() {
             <div style={{fontSize:22,color:"#C9A84C"}}>✞</div>
             <div>
               <div className="font-display" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>JESUS THE ROCK</div>
-              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION · D2</div>
+              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION</div>
             </div>
           </div>
 
@@ -2718,7 +2718,7 @@ export default function App() {
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{fontSize:32,color:"#C9A84C",marginBottom:16}}>✞</div>
           <div className="font-display goldText" style={{fontSize:"1.1rem",marginBottom:8}}>Jesus The Rock of Our Salvation Mission Church</div>
-          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>D2 · SERVING BY FAITH</div>
+          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>SERVING BY FAITH</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:24}}>
             <span style={{color:"#9A9080",fontStyle:"italic",fontSize:".95rem"}}>"He only is my rock and my salvation; he is my defence; I shall not be moved." — Psalm 62:6</span>
           </div>
@@ -2727,7 +2727,7 @@ export default function App() {
               <span key={n} className="navLink font-sans" style={{fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer",color:"#9A9080"}} onClick={()=>go(n)}>{n}</span>
             ))}
           </div>
-          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 D2 Jesus The Rock of Our Salvation Mission Church · Built with Faith</div>
+          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Morisoul</div>
         </div>
       </footer>
     </ErrorBoundary>
