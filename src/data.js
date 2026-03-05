@@ -50,14 +50,14 @@ export const ROLES = [
 ];
 
 export const ROLE_ACCESS = {
-  head:        ["Dashboard Overview","Manage Members","Manage Events","Finance Dashboard","Post Announcements","Attendance Logs","Export Reports","System Settings"],
-  treasurer:   ["Finance Dashboard","Financial Reports","Donation Records","Monthly Budget"],
-  financial:   ["Record Contributions","View Financial Reports"],
-  events:      ["Manage Events","Event Registration","Post Announcements"],
-  performance: ["Song List","Rehearsal Schedule","Practice Materials"],
-  secretary:   ["Member Records","Post Announcements","Upload Documents"],
-  engagement:  ["Attendance Monitoring","Visitor Follow-up","Member List"],
-  member:      ["My Profile","Devotion Submission","View Events","Giving History"],
+  head:        ["Dashboard Overview","Manage Members","Manage Events","Finance","Post Announcements","Attendance Logs","Export Reports","System Settings","Upload Documents","Rehearsal Schedule","Practice Materials"],
+  treasurer:   ["Donation Records","Financial Reports","Monthly Budget","Export Reports","Announcements","Rehearsal Schedule","Practice Materials"],
+  financial:   ["Donation Records","Financial Reports","Announcements","Rehearsal Schedule","Practice Materials"],
+  events:      ["Manage Events","Upcoming Events","Post Announcements","Announcements","Rehearsal Schedule","Practice Materials"],
+  performance: ["Song List","Rehearsal Schedule","Practice Materials","Announcements"],
+  secretary:   ["Member Records","Post Announcements","Upload Documents","Rehearsal Schedule","Practice Materials"],
+  engagement:  ["Attendance Monitoring","Visitor Follow-up","Member List","Announcements","Rehearsal Schedule","Practice Materials"],
+  member:      ["My Profile","Devotion Submission","View Events","Giving History","Announcements"],
 };
 
 export const ACCOUNTS = [

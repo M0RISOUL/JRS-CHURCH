@@ -1,11 +1,54 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   NAV_ITEMS, LEADERSHIP, MINISTRIES, EVENTS,
   SONGS, ROLES, ROLE_ACCESS, ACCOUNTS
 } from "./data";
 
-// Helper: add to activity log
-const addLog = (icon, msg, role, user) => { window.__activityLog = [{icon,msg,role,user:user||role,time:new Date().toLocaleDateString("en-PH",{month:"short",day:"numeric"})+" · "+new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})}, ...(window.__activityLog||[])]; };
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = {error:null}; }
+  static getDerivedStateFromError(e) { return {error:e}; }
+  render() {
+    if(this.state.error) return (
+      <div style={{padding:40,background:"#0A0A0F",minHeight:"100vh",color:"#E07B7B",fontFamily:"monospace"}}>
+        <h2 style={{color:"#E8CC7A",marginBottom:16}}>⚠️ App Error</h2>
+        <pre style={{whiteSpace:"pre-wrap",fontSize:".85rem",color:"#F0EAD6"}}>{this.state.error?.toString()}</pre>
+        <pre style={{whiteSpace:"pre-wrap",fontSize:".75rem",color:"#9A9080",marginTop:16}}>{this.state.error?.stack}</pre>
+        <button onClick={()=>this.setState({error:null})} style={{marginTop:24,padding:"10px 20px",background:"#C9A84C",border:"none",color:"#000",cursor:"pointer"}}>Try Again</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+
+// ── SUPABASE CLIENT ────────────────────────────────────────────────────────────
+const SUPA_URL = "https://fnzhxzvehungwmoxloqk.supabase.co";
+const SUPA_KEY = "sb_publishable_6aslXdtBqurjvDOu3D6dYw_ut8QECjR";
+
+const supaFetch = async (table, method="GET", body=null, query="") => {
+  const url = `${SUPA_URL}/rest/v1/${table}${query}`;
+  const headers = {
+    "apikey": SUPA_KEY,
+    "Authorization": `Bearer ${SUPA_KEY}`,
+    "Content-Type": "application/json",
+    "Prefer": method==="POST" ? "return=representation" : "",
+  };
+  const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : null });
+  if (!res.ok) { console.error("Supabase error:", await res.text()); return null; }
+  if (method==="DELETE") return true;
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+};
+
+const dbGet    = (table, query="?order=created_at.desc") => supaFetch(table,"GET",null,query);
+const dbInsert = (table, row)  => supaFetch(table,"POST",row);
+const dbDelete = (table, id)   => supaFetch(table,"DELETE",null,`?id=eq.${id}`);
+const dbUpdate = (table, id, row) => supaFetch(table,"PATCH",row,`?id=eq.${id}`);
+
+// Helper: log activity to Supabase
+const addLog = (icon, msg, role, user) => {
+  dbInsert("activity_log", { icon, msg, role, username: user||role });
+};
 
 const style = `
   @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=Tenor+Sans&display=swap');
@@ -93,6 +136,8 @@ const Hdr = ({eye,title,sub}) => (
 );
 
 function Home({go}) {
+  const [homeEvents, setHomeEvents] = useState([]);
+  useEffect(()=>{dbGet("announcements","?author=eq.__upcoming__&order=created_at.asc").then(d=>{if(d)setHomeEvents(d);});},[]);
   return (
     <div>
       <div className="heroBg">
@@ -102,7 +147,7 @@ function Home({go}) {
         <div style={{position:"relative",zIndex:2,animation:"fadeUp 1s ease forwards"}}>
           <div className="aCross" style={{width:100,height:100,margin:"0 auto 32px",background:"radial-gradient(circle,rgba(201,168,76,.2),transparent)",border:"2px solid rgba(201,168,76,.4)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>✞</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:16}}>
-            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>Est. by Faith</span>
+            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>D2 · Est. by Faith</span>
           </div>
           <h1 className="font-display heroTitle goldText" style={{fontSize:"clamp(1.6rem,5vw,3.2rem)",lineHeight:1.3,marginBottom:12,maxWidth:700}}>
             Jesus The Rock<br/>of Our Salvation<br/>Mission Church
@@ -111,7 +156,7 @@ function Home({go}) {
           <p className="font-sans" style={{fontSize:".8rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:40}}>PSALM 62:6</p>
           <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
             <button className="btnGold aPulse" onClick={()=>go("Events")}>Join Us This Sunday</button>
-            <button className="btnOut" onClick={()=>go("Media")}>Watch Live</button>
+            <a href="https://www.facebook.com/profile.php?id=61568763184691" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}><button className="btnOut">📺 Watch Live</button></a>
           </div>
         </div>
         <div style={{position:"absolute",bottom:32,left:"50%",transform:"translateX(-50%)"}} className="aFloat">
@@ -134,22 +179,41 @@ function Home({go}) {
       <div style={{background:"#0E0E18",padding:"80px 24px"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <Hdr eye="What's Coming" title="Upcoming Events"/>
-          <div className="g2">
-            {EVENTS.slice(0,4).map(e=>(
-              <div key={e.title} className={`card ev-${e.type}`} style={{background:"#12121A",borderLeft:"3px solid",padding:"20px 24px",display:"flex",gap:20,alignItems:"center"}}>
-                <div style={{textAlign:"center",minWidth:60}}>
-                  <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em"}}>{e.date.split(" ")[0].toUpperCase()}</div>
-                  <div className="font-display" style={{fontSize:"1.8rem"}}>{e.date.split(" ")[1]}</div>
-                </div>
-                <div><div style={{fontWeight:600,marginBottom:4}}>{e.title}</div><div style={{color:"#9A9080",fontSize:".9rem"}}>{e.time}</div></div>
-              </div>
-            ))}
-          </div>
+          {homeEvents.length===0
+            ? <div style={{color:"#9A9080",textAlign:"center",padding:32}}>No upcoming events yet. Check back soon!</div>
+            : <div className="g2">
+              {homeEvents.map((e,i)=>{
+                const typeColor = t=>t==="worship"?"#C9A84C":t==="prayer"?"#B07BE0":t==="youth"?"#7BE0B0":t==="event"?"#7B9EF0":t==="devotion"?"#E0B07B":"#9A9080";
+                const typeIcon  = t=>t==="worship"?"✝️":t==="prayer"?"🙏":t==="youth"?"🌟":t==="event"?"🎉":t==="devotion"?"📖":"📅";
+                let _p={};try{_p=JSON.parse(e.body||"{}");}catch{}
+                const evType = _p.event_type||"event";
+                const evDate = _p.date||"";
+                const evTime = _p.time||"";
+                const c = typeColor(evType);
+                const parts = evDate.split(" ");
+                return (
+                  <div key={e.id||i} style={{background:"#12121A",borderLeft:`3px solid ${c}`,padding:"20px 24px",display:"flex",gap:20,alignItems:"center",transition:"all .2s",cursor:"default"}}
+                    onMouseEnter={ev=>{ev.currentTarget.style.background="#1A1A28";ev.currentTarget.style.transform="translateY(-3px)";ev.currentTarget.style.boxShadow=`0 12px 32px ${c}25`;}}
+                    onMouseLeave={ev=>{ev.currentTarget.style.background="#12121A";ev.currentTarget.style.transform="translateY(0)";ev.currentTarget.style.boxShadow="none";}}>
+                    <div style={{textAlign:"center",minWidth:60}}>
+                      <div className="font-sans" style={{fontSize:".7rem",color:c,letterSpacing:".1em"}}>{(parts[0]||"").toUpperCase()}</div>
+                      <div className="font-display" style={{fontSize:"1.8rem",color:"#F0EAD6"}}>{parts[1]||""}</div>
+                    </div>
+                    <div style={{fontSize:"1.2rem"}}>{typeIcon(evType)}</div>
+                    <div>
+                      <div style={{fontWeight:600,marginBottom:4}}>{e.title}</div>
+                      <div style={{color:"#9A9080",fontSize:".9rem"}}>{evTime}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          }
         </div>
       </div>
       <section>
         <div style={{maxWidth:700,margin:"0 auto",textAlign:"center"}}>
-          <Hdr eye="A Word From Our Head" title="Welcome to JRS Church"/>
+          <Hdr eye="A Word From Our Head" title="Welcome to D2 Church"/>
           <p style={{fontSize:"1.2rem",lineHeight:2,color:"#B0A898",fontStyle:"italic",marginBottom:32}}>
             "Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."
           </p>
@@ -219,57 +283,44 @@ function Ministries() {
 }
 
 function Events() {
-  const [f,setF]=useState({name:"",email:"",event:""});
-  const [ok,setOk]=useState(false);
+  const [events, setEvents] = useState([]);
+  useEffect(()=>{dbGet("events","?order=created_at.asc").then(d=>{if(d)setEvents(d);});},[]);
+  const typeColor = t=>t==="worship"?"#C9A84C":t==="prayer"?"#B07BE0":t==="youth"?"#7BE0B0":t==="event"?"#7B9EF0":t==="devotion"?"#E0B07B":"#9A9080";
+  const typeIcon  = t=>t==="worship"?"✝️":t==="prayer"?"🙏":t==="youth"?"🌟":t==="event"?"🎉":t==="devotion"?"📖":"📅";
   return (
     <section>
       <Hdr eye="Plan Your Visit" title="Events Calendar"/>
       <div style={{marginBottom:60}}>
-        {EVENTS.map(e=>(
-          <div key={e.title} className={`card ev-${e.type}`} style={{background:"#12121A",borderLeft:"3px solid",padding:"24px 28px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
-            <div style={{display:"flex",gap:24,alignItems:"center"}}>
-              <div style={{textAlign:"center",minWidth:70}}>
-                <div className="font-sans" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".15em"}}>{e.date.split(" ")[0].toUpperCase()}</div>
-                <div className="font-display" style={{fontSize:"2rem"}}>{e.date.split(" ")[1]}</div>
-              </div>
-              <div><div style={{fontWeight:600,fontSize:"1.1rem",marginBottom:4}}>{e.title}</div><div style={{color:"#9A9080"}}>{e.time}</div></div>
+        {events.length===0 && <div style={{color:"#9A9080",textAlign:"center",padding:32}}>No upcoming events yet. Check back soon!</div>}
+        {events.map(e=>{
+          const c = typeColor(e.type);
+          const parts = (e.date||"").split(" ");
+          return (
+          <div key={e.id||e.title} style={{background:"#12121A",borderLeft:`3px solid ${c}`,padding:"24px 28px",marginBottom:16,display:"flex",gap:24,alignItems:"center",flexWrap:"wrap",transition:"all .2s",cursor:"default"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="#1A1A28";e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 12px 32px ${c}25`;}}
+            onMouseLeave={e=>{e.currentTarget.style.background="#12121A";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+            <div style={{textAlign:"center",minWidth:64}}>
+              <div className="font-sans" style={{fontSize:".65rem",color:c,letterSpacing:".15em"}}>{(parts[0]||"").toUpperCase()}</div>
+              <div className="font-display" style={{fontSize:"2rem",color:"#F0EAD6"}}>{parts[1]||""}</div>
             </div>
-            <button className="btnOut" style={{padding:"8px 20px",fontSize:".75rem"}}>Register</button>
-          </div>
-        ))}
-      </div>
-      <div style={{background:"#12121A",border:"1px solid #22223A",padding:48,maxWidth:600,position:"relative"}}>
-        <TL/>
-        <h3 className="font-display" style={{fontSize:"1.3rem",marginBottom:8,color:"#E8CC7A"}}>Event Registration</h3>
-        <p style={{color:"#9A9080",marginBottom:32}}>Sign up for an upcoming church event.</p>
-        {ok?(
-          <div style={{textAlign:"center",padding:32}}>
-            <div style={{fontSize:48,marginBottom:16}}>✅</div>
-            <h4 className="font-display" style={{color:"#C9A84C",marginBottom:8}}>Registered!</h4>
-            <p style={{color:"#9A9080"}}>We'll see you there. God bless!</p>
-            <button className="btnOut" style={{marginTop:24}} onClick={()=>setOk(false)}>Register for Another</button>
-          </div>
-        ):(
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
-            <div><label>Full Name</label><input placeholder="Juan dela Cruz" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></div>
-            <div><label>Email</label><input type="email" placeholder="juan@email.com" value={f.email} onChange={e=>setF({...f,email:e.target.value})}/></div>
-            <div><label>Select Event</label>
-              <select value={f.event} onChange={e=>setF({...f,event:e.target.value})}>
-                <option value="">— Choose —</option>
-                {EVENTS.map(ev=><option key={ev.title} value={ev.title}>{ev.date} — {ev.title}</option>)}
-              </select>
+            <div style={{fontSize:"1.5rem"}}>{typeIcon(e.type)}</div>
+            <div>
+              <div style={{fontWeight:600,fontSize:"1.1rem",marginBottom:4}}>{e.title}</div>
+              <div style={{color:"#9A9080"}}>{e.time}</div>
+              {e.type&&<div style={{marginTop:6,display:"inline-block",padding:"2px 10px",fontSize:".7rem",background:`${c}18`,color:c,border:`1px solid ${c}40`,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em",textTransform:"uppercase"}}>{e.type}</div>}
             </div>
-            <button className="btnGold" onClick={()=>{if(f.name&&f.email&&f.event)setOk(true);}}>Confirm Registration</button>
           </div>
-        )}
+          );
+        })}
       </div>
     </section>
   );
 }
-
 function Media() {
+  const [songs, setSongs] = useState([]);
   const [playing, setPlaying] = useState(null);
   const [filter, setFilter] = useState("All");
+  useEffect(()=>{dbGet("songs","?order=created_at.asc").then(d=>{if(d)setSongs(d);});},[]);
   const getYouTubeId = (url) => {
     if (!url) return null;
     const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
@@ -277,7 +328,7 @@ function Media() {
   };
   const catColor = (c) => c==="Praise"?"#C9A84C":c==="Worship"?"#B07BE0":c==="Hymn"?"#7B9EF0":c==="Special"?"#E07B7B":"#9A9080";
   const cats = ["All","Praise","Worship","Hymn","Special"];
-  const filtered = filter === "All" ? SONGS : SONGS.filter(s=>s.category===filter);
+  const filtered = filter === "All" ? songs : songs.filter(s=>s.category===filter);
   const cur = playing !== null ? filtered[playing] : null;
   const vid = cur ? getYouTubeId(cur.youtube) : null;
   return (
@@ -285,12 +336,17 @@ function Media() {
       <Hdr eye="God's Word & Worship" title="Sermons & Media"/>
       <div style={{background:"#12121A",border:"1px solid #22223A",padding:48,marginBottom:48,position:"relative",textAlign:"center"}}>
         <TL/>
-        <div style={{width:"100%",maxWidth:640,height:300,margin:"0 auto",background:"#0A0A0F",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"1px solid #22223A",marginBottom:24}}>
-          <div className="aPulse" style={{width:72,height:72,borderRadius:"50%",background:"rgba(201,168,76,.15)",border:"2px solid #C9A84C",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:16}}>▶</div>
-          <div className="font-sans" style={{fontSize:".8rem",letterSpacing:".15em",color:"#C9A84C"}}>LIVE STREAM</div>
-          <div style={{color:"#9A9080",fontSize:".9rem",marginTop:8}}>Every Sunday at 9:00 AM</div>
-        </div>
-        <button className="btnGold">Watch Live on YouTube</button>
+        <a href="https://www.facebook.com/profile.php?id=61568763184691" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none",display:"block"}}>
+          <div style={{width:"100%",maxWidth:640,height:300,margin:"0 auto",background:"#0A0A0F",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"1px solid #22223A",marginBottom:24,cursor:"pointer",transition:"all .3s"}}
+            onMouseEnter={e=>{e.currentTarget.style.border="1px solid #C9A84C";e.currentTarget.style.background="#0F0F18";}}
+            onMouseLeave={e=>{e.currentTarget.style.border="1px solid #22223A";e.currentTarget.style.background="#0A0A0F";}}>
+            <div className="aPulse" style={{width:72,height:72,borderRadius:"50%",background:"rgba(201,168,76,.15)",border:"2px solid #C9A84C",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:16}}>▶</div>
+            <div className="font-sans" style={{fontSize:".8rem",letterSpacing:".15em",color:"#C9A84C"}}>FACEBOOK LIVE</div>
+            <div style={{color:"#9A9080",fontSize:".9rem",marginTop:8}}>Every Sunday at 9:00 AM</div>
+            <div style={{color:"#C9A84C",fontSize:".75rem",marginTop:12,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".1em"}}>Click to watch →</div>
+          </div>
+        </a>
+        <a href="https://www.facebook.com/profile.php?id=61568763184691" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}><button className="btnGold">📺 Watch Live on Facebook</button></a>
       </div>
       <Hdr eye="Our Music" title="Song List & Music Player"/>
       {cur && (
@@ -344,45 +400,17 @@ function Media() {
   );
 }
 function Give() {
-  const [f,setF]=useState({name:"",type:"tithe",amount:""});
-  const [ok,setOk]=useState(false);
   return (
     <section>
       <Hdr eye="Give & Support" title="Online Offering" sub="Bring the whole tithe into the storehouse. — Malachi 3:10"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:24,marginBottom:48}}>
-        <div style={{background:"#12121A",border:"1px solid #22223A",padding:40,position:"relative"}}>
-          <TL/>
-          <h3 className="font-display" style={{color:"#E8CC7A",marginBottom:24}}>Give Now</h3>
-          {ok?(
-            <div style={{textAlign:"center",padding:"32px 0"}}>
-              <div style={{fontSize:48,marginBottom:16}}>🙏</div>
-              <h4 className="font-display" style={{color:"#C9A84C",marginBottom:8}}>Thank You!</h4>
-              <p style={{color:"#9A9080"}}>Your offering has been recorded. God bless!</p>
-              <button className="btnOut" style={{marginTop:24}} onClick={()=>setOk(false)}>Give Again</button>
-            </div>
-          ):(
-            <div style={{display:"flex",flexDirection:"column",gap:20}}>
-              <div><label>Your Name</label><input placeholder="Juan dela Cruz" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></div>
-              <div><label>Offering Type</label>
-                <select value={f.type} onChange={e=>setF({...f,type:e.target.value})}>
-                  <option value="tithe">Tithes</option><option value="offering">Offering</option>
-                  <option value="mission">Mission Fund</option><option value="building">Building Fund</option>
-                </select>
-              </div>
-              <div><label>Amount (PHP)</label><input type="number" placeholder="Any amount" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})}/></div>
-              <button className="btnGold" onClick={()=>{if(f.name&&f.amount)setOk(true);}}>Submit Offering</button>
-            </div>
-          )}
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","JRS Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JRS JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
-            <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
-              <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
-              <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
-              {b.info.map(([k,v])=><div key={k} style={{color:"#B0A898",lineHeight:1.9}}>{k}: <span style={{color:"#C9A84C"}}>{v}</span></div>)}
-            </div>
-          ))}
-        </div>
+        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","D2 Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","D2 JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
+          <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
+            <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
+            {b.info.map(([k,v])=><div key={k} style={{color:"#B0A898",lineHeight:1.9}}>{k}: <span style={{color:"#C9A84C"}}>{v}</span></div>)}
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -391,27 +419,15 @@ function Give() {
 function Prayer() {
   const [f,setF]=useState({name:"",req:"",conf:false});
   const [ok,setOk]=useState(false);
-  const submit = () => {
+  const [loading,setLoading]=useState(false);
+  const submit = async () => {
     if (!f.req) return;
-    const entry = {
-      id: Date.now(),
-      name: f.name.trim() || "Anonymous",
-      req: f.req,
-      conf: f.conf,
-      date: new Date().toLocaleDateString("en-PH",{month:"short",day:"numeric"}),
-      time: new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),
-    };
-    window.__prayerRequests = [entry, ...(window.__prayerRequests||[])];
-    // Add to activity log
-    const logEntry = {
-      icon:"🙏",
-      msg: f.conf
-        ? "A confidential prayer request was submitted"
-        : `New prayer request from ${entry.name}`,
-      role:"Guest",
-      time: entry.date + " · " + entry.time,
-    };
-    window.__activityLog = [logEntry, ...(window.__activityLog||[])];
+    setLoading(true);
+    const name = f.name.trim() || "Anonymous";
+    await dbInsert("prayer_requests", { name, req: f.req, conf: f.conf });
+    addLog("🙏", f.conf ? "A confidential prayer request was submitted" : `New prayer request from ${name}`, "Guest", name);
+    window.dispatchEvent(new Event("prayerUpdate"));
+    setLoading(false);
     setOk(true);
     setF({name:"",req:"",conf:false});
   };
@@ -436,7 +452,7 @@ function Prayer() {
                 <input type="checkbox" id="conf" checked={f.conf} onChange={e=>setF({...f,conf:e.target.checked})} style={{width:"auto",accentColor:"#C9A84C"}}/>
                 <label htmlFor="conf" style={{marginBottom:0,textTransform:"none",letterSpacing:0,fontSize:".95rem",cursor:"pointer"}}>🔒 Keep this request confidential</label>
               </div>
-              <button className="btnGold" onClick={submit}>Submit Prayer Request</button>
+              <button className="btnGold" onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Prayer Request"}</button>
             </div>
           )}
         </div>
@@ -482,22 +498,47 @@ function Login({onLogin}) {
 }
 
 // ── PANELS ────────────────────────────────────────────────────────────────────
+// ── CONFIRM DELETE DIALOG ────────────────────────────────────────────────────
+function ConfirmDialog({onConfirm, onCancel, message="Are you sure you want to delete this?"}) {
+  return (
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}}>
+      <div style={{background:"#1A1A28",border:"1px solid #E07B7B",padding:32,maxWidth:360,width:"90%",position:"relative",textAlign:"center"}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#E07B7B,transparent)"}}/>
+        <div style={{fontSize:32,marginBottom:12}}>🗑️</div>
+        <div style={{fontWeight:600,marginBottom:8,color:"#F0EAD6"}}>{message}</div>
+        <div style={{color:"#9A9080",fontSize:".9rem",marginBottom:24}}>This action cannot be undone.</div>
+        <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+          <button onClick={onConfirm} style={{background:"rgba(224,123,123,.2)",border:"1px solid #E07B7B",color:"#E07B7B",cursor:"pointer",padding:"10px 28px",fontFamily:"'Tenor Sans',sans-serif",fontSize:".85rem",letterSpacing:".08em"}}>🗑 Delete</button>
+          <button onClick={onCancel} style={{background:"rgba(255,255,255,.06)",border:"1px solid #22223A",color:"#9A9080",cursor:"pointer",padding:"10px 28px",fontFamily:"'Tenor Sans',sans-serif",fontSize:".85rem",letterSpacing:".08em"}}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MembersPanel() {
-  const [members,setMembers]=useState([
-    {id:1,name:"Kuya Ivan",role:"Head",status:"Active",joined:"Jan 2024"},
-    {id:2,name:"Ange",role:"Treasurer",status:"Active",joined:"Jan 2024"},
-    {id:3,name:"Angie",role:"Financial Dept",status:"Active",joined:"Jan 2024"},
-    {id:4,name:"Ced",role:"Events / Engagement",status:"Active",joined:"Feb 2024"},
-    {id:5,name:"Precious",role:"Performance Dept",status:"Active",joined:"Feb 2024"},
-    {id:6,name:"Jam",role:"Secretary",status:"Active",joined:"Mar 2024"},
-    {id:7,name:"Pipper",role:"Events Dept",status:"Active",joined:"Mar 2024"},
-    {id:8,name:"Tine",role:"Events / Secretary",status:"Active",joined:"Mar 2024"},
-    {id:9,name:"Krislene",role:"Performance Dept",status:"Active",joined:"Apr 2024"},
-    {id:10,name:"Ariane",role:"Financial Dept",status:"Active",joined:"Apr 2024"},
-  ]);
+  const [members,setMembers]=useState([]);
+  const [confirmId,setConfirmId]=useState(null);
   const [form,setForm]=useState({name:"",role:"",status:"Active",joined:""});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.name||!form.role)return;setMembers([...members,{id:Date.now(),...form}]);addLog("👥","New member added: "+form.name,"Head","Kuya Ivan");setForm({name:"",role:"",status:"Active",joined:""});setAdding(false);};
+  const [loading,setLoading]=useState(true);
+  const [editId,setEditId]=useState(null);
+  const [editData,setEditData]=useState({});
+  useEffect(()=>{dbGet("members","?order=created_at.asc").then(d=>{if(d)setMembers(d);setLoading(false);});},[]);
+  const add=async()=>{
+    if(!form.name||!form.role)return;
+    const r=await dbInsert("members",form);
+    if(r&&r[0]){setMembers([...members,r[0]]);addLog("👥","New member added: "+form.name,"Head","Kuya Ivan");}
+    setForm({name:"",role:"",status:"Active",joined:""});setAdding(false);
+  };
+  const remove=async(id)=>{await dbDelete("members",id);setMembers(members.filter(x=>x.id!==id));};
+  const startEdit=(m)=>{setEditId(m.id);setEditData({role:m.role,status:m.status});};
+  const saveEdit=async(id)=>{
+    await dbUpdate("members",id,editData);
+    setMembers(members.map(x=>x.id===id?{...x,...editData}:x));
+    addLog("👥","Member record updated","Head","Kuya Ivan");
+    setEditId(null);
+  };
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -511,6 +552,7 @@ function MembersPanel() {
         <div><label>Date Joined</label><input placeholder="Mar 2026" value={form.joined} onChange={e=>setForm({...form,joined:e.target.value})}/></div>
         <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button></div>
       </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading members...</div>:(
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr style={{borderBottom:"1px solid #22223A"}}>{["#","Name","Role","Status","Joined","Action"].map(h=><th key={h} className="font-sans" style={{padding:"10px 16px",textAlign:"left",fontSize:".7rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
@@ -518,81 +560,406 @@ function MembersPanel() {
             <tr key={m.id} style={{borderBottom:"1px solid #1A1A28"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A28"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
               <td style={{padding:"12px 16px",color:"#9A9080",fontSize:".85rem"}}>{i+1}</td>
               <td style={{padding:"12px 16px",fontWeight:600}}>{m.name}</td>
-              <td style={{padding:"12px 16px",color:"#9A9080",fontSize:".9rem"}}>{m.role}</td>
-              <td style={{padding:"12px 16px"}}><span style={{padding:"2px 10px",fontSize:".7rem",background:m.status==="Active"?"rgba(123,224,176,.1)":"rgba(224,123,123,.1)",color:m.status==="Active"?"#7BE0B0":"#E07B7B",border:`1px solid ${m.status==="Active"?"rgba(123,224,176,.3)":"rgba(224,123,123,.3)"}`}}>{m.status}</span></td>
+              <td style={{padding:"12px 16px"}}>
+                {editId===m.id
+                  ? <input value={editData.role} onChange={e=>setEditData({...editData,role:e.target.value})} style={{padding:"6px 10px",background:"#12121A",border:"1px solid #C9A84C",color:"#F0EAD6",width:"100%",minWidth:120}}/>
+                  : <span style={{color:"#9A9080",fontSize:".9rem"}}>{m.role}</span>}
+              </td>
+              <td style={{padding:"12px 16px"}}>
+                {editId===m.id
+                  ? <select value={editData.status} onChange={e=>setEditData({...editData,status:e.target.value})} style={{padding:"6px 10px",background:"#12121A",border:"1px solid #C9A84C",color:"#F0EAD6"}}>
+                      <option>Active</option><option>Inactive</option>
+                    </select>
+                  : <span style={{padding:"2px 10px",fontSize:".7rem",background:m.status==="Active"?"rgba(123,224,176,.1)":"rgba(224,123,123,.1)",color:m.status==="Active"?"#7BE0B0":"#E07B7B",border:`1px solid ${m.status==="Active"?"rgba(123,224,176,.3)":"rgba(224,123,123,.3)"}`}}>{m.status}</span>}
+              </td>
               <td style={{padding:"12px 16px",color:"#9A9080",fontSize:".85rem"}}>{m.joined}</td>
-              <td style={{padding:"12px 16px"}}><button onClick={()=>setMembers(members.filter(x=>x.id!==m.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button></td>
+              <td style={{padding:"12px 16px"}}><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {editId===m.id
+                  ? <>
+                      <button onClick={()=>saveEdit(m.id)} style={{background:"none",border:"none",color:"#7BE0B0",cursor:"pointer",fontSize:".85rem"}}>✓ Save</button>
+                      <button onClick={()=>setEditId(null)} style={{background:"none",border:"none",color:"#9A9080",cursor:"pointer",fontSize:".85rem"}}>Cancel</button>
+                    </>
+                  : <>
+                      <button onClick={()=>startEdit(m)} style={{background:"none",border:"none",color:"#C9A84C",cursor:"pointer",fontSize:".85rem"}}>✏️ Edit</button>
+                      <button onClick={()=>setConfirmId(m.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button>
+                    </>}
+              </div></td>
             </tr>
           ))}</tbody>
         </table>
-      </div>
+      </div>)}
       <div style={{marginTop:16,color:"#9A9080",fontSize:".85rem"}}>Total: {members.length} members</div>
     </div>
   );
 }
 
-function FinancePanel() {
-  const [records,setRecords]=useState([
-    {id:1,name:"Kuya Ivan",type:"Tithe",amount:500,date:"Mar 1",status:"Verified"},
-    {id:2,name:"Ange",type:"Offering",amount:200,date:"Mar 1",status:"Verified"},
-    {id:3,name:"Angie",type:"Tithe",amount:300,date:"Mar 2",status:"Pending"},
-    {id:4,name:"Ced",type:"Mission Fund",amount:150,date:"Mar 2",status:"Verified"},
-    {id:5,name:"Precious",type:"Offering",amount:100,date:"Mar 3",status:"Pending"},
-  ]);
-  const [form,setForm]=useState({name:"",type:"Tithe",amount:"",date:"",status:"Pending"});
-  const [adding,setAdding]=useState(false);
-  const totalV=records.filter(r=>r.status==="Verified").reduce((s,r)=>s+r.amount,0);
-  const totalP=records.filter(r=>r.status==="Pending").reduce((s,r)=>s+r.amount,0);
-  const add=()=>{if(!form.name||!form.amount)return;setRecords([...records,{id:Date.now(),...form,amount:Number(form.amount)}]);addLog("💰","Recorded "+form.type+": "+form.name+" — ₱"+form.amount,"Financial","Treasurer/Financial");setForm({name:"",type:"Tithe",amount:"",date:"",status:"Pending"});setAdding(false);};
+function DonationRecordsPanel() {
+  const [records, setRecords] = useState([]);
+  const [confirmId,setConfirmId]=useState(null);
+  const [form, setForm] = useState({name:"",type:"Tithe",amount:"",date:"",status:"Pending"});
+  const [adding, setAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
+  useEffect(()=>{
+    dbGet("finance_records","?order=created_at.desc")
+      .then(d=>{if(d)setRecords(d.filter(x=>x.source!=="financial"));setLoading(false);});
+  },[]);
+  const totalV = records.filter(r=>r.status==="Verified").reduce((s,r)=>s+Number(r.amount),0);
+  const totalP = records.filter(r=>r.status==="Pending").reduce((s,r)=>s+Number(r.amount),0);
+  const add = async () => {
+    if(!form.name||!form.amount) return;
+    const r = await dbInsert("finance_records",{name:form.name,type:form.type,amount:Number(form.amount),date:form.date,status:form.status,source:"donations"});
+    if(r&&r[0]){setRecords([r[0],...records]);addLog("💰","Donation recorded: "+form.name+" — ₱"+form.amount,"Financial","Treasurer/Financial");}
+    setForm({name:"",type:"Tithe",amount:"",date:"",status:"Pending"});setAdding(false);
+  };
+  const verify = async(id)=>{await dbUpdate("finance_records",id,{status:"Verified"});setRecords(records.map(x=>x.id===id?{...x,status:"Verified"}:x));};
+  const remove = async(id)=>{await dbDelete("finance_records",id);setRecords(records.filter(x=>x.id!==id));};
   return (
     <div>
-      <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:24}}>💰 Finance Dashboard</h4>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:16,marginBottom:32}}>
-        {[{l:"Verified Total",v:`₱${totalV.toLocaleString()}`,c:"#7BE0B0"},{l:"Pending Total",v:`₱${totalP.toLocaleString()}`,c:"#E0B07B"},{l:"Total Records",v:records.length,c:"#7B9EF0"},{l:"Month",v:"March 2026",c:"#C9A84C"}].map(s=>(
-          <div key={s.l} style={{background:"#1A1A28",padding:"20px 24px",borderLeft:`3px solid ${s.c}`}}>
-            <div style={{fontSize:".75rem",color:s.c,marginBottom:4,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em"}}>{s.l}</div>
-            <div className="font-display" style={{fontSize:"1.4rem",color:s.c}}>{s.v}</div>
+      <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:24}}>💵 Donation Records</h4>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:16,marginBottom:24}}>
+        {[{l:"Verified Total",v:`₱${totalV.toLocaleString()}`,c:"#7BE0B0"},{l:"Pending Total",v:`₱${totalP.toLocaleString()}`,c:"#E0B07B"},{l:"Total Records",v:records.length,c:"#7B9EF0"}].map(s=>(
+          <div key={s.l} style={{background:"#1A1A28",padding:"18px 22px",borderLeft:`3px solid ${s.c}`}}>
+            <div style={{fontSize:".72rem",color:s.c,marginBottom:4,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em",textTransform:"uppercase"}}>{s.l}</div>
+            <div className="font-display" style={{fontSize:"1.5rem",color:s.c}}>{s.v}</div>
           </div>
         ))}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:12}}>
-        <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>Contribution Records</div>
-        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Record Offering"}</button>
+        <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>Member Donations</div>
+        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Record Donation"}</button>
       </div>
-      {adding&&(<div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12}}>
+      {adding&&(<div style={{background:"#12121A",border:"1px solid #22223A",padding:20,marginBottom:20,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12}}>
         <div><label>Name</label><input placeholder="Contributor" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
         <div><label>Type</label><select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{["Tithe","Offering","Mission Fund","Building Fund"].map(t=><option key={t}>{t}</option>)}</select></div>
         <div><label>Amount (₱)</label><input type="number" placeholder="0" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></div>
-        <div><label>Date</label><input placeholder="Mar 3" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
+        <div><label>Date</label><input placeholder="Mar 9" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
         <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button></div>
       </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading...</div>:(
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr style={{borderBottom:"1px solid #22223A"}}>{["Name","Type","Amount","Date","Status","Action"].map(h=><th key={h} className="font-sans" style={{padding:"10px 16px",textAlign:"left",fontSize:".7rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-          <tbody>{records.map(r=>(
-            <tr key={r.id} style={{borderBottom:"1px solid #1A1A28"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A28"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              <td style={{padding:"12px 16px",fontWeight:600}}>{r.name}</td>
-              <td style={{padding:"12px 16px",color:"#9A9080",fontSize:".9rem"}}>{r.type}</td>
-              <td style={{padding:"12px 16px",color:"#7BE0B0",fontWeight:600}}>₱{r.amount.toLocaleString()}</td>
-              <td style={{padding:"12px 16px",color:"#9A9080",fontSize:".85rem"}}>{r.date}</td>
-              <td style={{padding:"12px 16px"}}><span style={{padding:"2px 10px",fontSize:".7rem",background:r.status==="Verified"?"rgba(123,224,176,.1)":"rgba(224,176,123,.1)",color:r.status==="Verified"?"#7BE0B0":"#E0B07B",border:`1px solid ${r.status==="Verified"?"rgba(123,224,176,.3)":"rgba(224,176,123,.3)"}`}}>{r.status}</span></td>
-              <td style={{padding:"12px 16px"}}><div style={{display:"flex",gap:8}}>
-                {r.status==="Pending"&&<button onClick={()=>setRecords(records.map(x=>x.id===r.id?{...x,status:"Verified"}:x))} style={{background:"none",border:"none",color:"#7BE0B0",cursor:"pointer",fontSize:".85rem"}}>✓ Verify</button>}
-                <button onClick={()=>setRecords(records.filter(x=>x.id!==r.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button>
-              </div></td>
-            </tr>
-          ))}</tbody>
+          <thead><tr style={{borderBottom:"1px solid #22223A"}}>{["Name","Type","Amount","Date","Status","Action"].map(h=><th key={h} className="font-sans" style={{padding:"10px 14px",textAlign:"left",fontSize:".68rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+          <tbody>
+            {records.map(r=>(
+              <tr key={r.id} style={{borderBottom:"1px solid #1A1A28"}} onMouseEnter={e=>e.currentTarget.style.background="#1E1E2E"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <td style={{padding:"11px 14px",fontWeight:600}}>{r.name}</td>
+                <td style={{padding:"11px 14px",color:"#9A9080",fontSize:".9rem"}}>{r.type}</td>
+                <td style={{padding:"11px 14px",color:"#7BE0B0",fontWeight:600}}>₱{Number(r.amount).toLocaleString()}</td>
+                <td style={{padding:"11px 14px",color:"#9A9080",fontSize:".85rem"}}>{r.date||new Date(r.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</td>
+                <td style={{padding:"11px 14px"}}><span style={{padding:"2px 10px",fontSize:".68rem",background:r.status==="Verified"?"rgba(123,224,176,.1)":"rgba(224,176,123,.1)",color:r.status==="Verified"?"#7BE0B0":"#E0B07B",border:`1px solid ${r.status==="Verified"?"rgba(123,224,176,.3)":"rgba(224,176,123,.3)"}`}}>{r.status}</span></td>
+                <td style={{padding:"11px 14px"}}><div style={{display:"flex",gap:8}}>
+                  {r.status==="Pending"&&<button onClick={()=>verify(r.id)} style={{background:"none",border:"none",color:"#7BE0B0",cursor:"pointer",fontSize:".82rem"}}>✓ Verify</button>}
+                  <button onClick={()=>setConfirmId(r.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".82rem"}}>Remove</button>
+                </div></td>
+              </tr>
+            ))}
+            {records.length===0&&<tr><td colSpan={6} style={{padding:32,textAlign:"center",color:"#9A9080"}}>No donations recorded yet.</td></tr>}
+          </tbody>
         </table>
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
+    </div>
+  );
+}
+
+function FinancialReportsPanel() {
+  const [records, setRecords] = useState([]);
+  const [confirmId,setConfirmId]=useState(null);
+  const [form, setForm] = useState({name:"",type:"Expense",amount:"",date:"",status:"Pending",note:""});
+  const [adding, setAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
+  useEffect(()=>{
+    dbGet("finance_records","?order=created_at.desc")
+      .then(d=>{
+        if(d) setRecords(d.filter(x=>x.source==="financial"));
+        setLoading(false);
+      });
+  },[]);
+  const totalAll = records.reduce((s,r)=>s+Number(r.amount),0);
+  const totalV   = records.filter(r=>r.status==="Verified").reduce((s,r)=>s+Number(r.amount),0);
+  const totalP   = records.filter(r=>r.status==="Pending").reduce((s,r)=>s+Number(r.amount),0);
+  const add = async () => {
+    if(!form.name||!form.amount) return;
+    const payload = {name:form.name, type:form.type, amount:Number(form.amount), date:form.date, status:form.status, source:"financial"};
+    const r = await dbInsert("finance_records", payload);
+    if(r&&r[0]){
+      setRecords([{...r[0], source:"financial"},...records]);
+      addLog("📊","Financial entry: "+form.name+" — ₱"+form.amount,"Financial","Treasurer");
+    } else {
+      // Fallback: show locally even if Supabase didn't return data
+      setRecords([{...payload, id:Date.now(), created_at:new Date().toISOString()},...records]);
+    }
+    setForm({name:"",type:"Expense",amount:"",date:"",status:"Pending",note:""});setAdding(false);
+  };
+  const verify = async(id)=>{await dbUpdate("finance_records",id,{status:"Verified"});setRecords(records.map(x=>x.id===id?{...x,status:"Verified"}:x));};
+  const remove = async(id)=>{await dbDelete("finance_records",id);setRecords(records.filter(x=>x.id!==id));};
+  const typeBreakdown = ["Expense","Income","Salary","Utility","Maintenance","Other"].map(t=>({
+    type:t, total:records.filter(r=>r.type===t).reduce((s,r)=>s+Number(r.amount),0),
+    count:records.filter(r=>r.type===t).length,
+  })).filter(t=>t.count>0);
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <h4 className="font-display" style={{color:"#E8CC7A"}}>📊 Financial Reports</h4>
+        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Entry"}</button>
       </div>
+      {adding&&(<div style={{background:"#1A1A28",border:"1px solid #22223A",padding:20,marginBottom:20,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12}}>
+        <div><label>Description</label><input placeholder="e.g. Electricity" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+        <div><label>Type</label><select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{["Expense","Income","Salary","Utility","Maintenance","Other"].map(t=><option key={t}>{t}</option>)}</select></div>
+        <div><label>Amount (₱)</label><input type="number" placeholder="0" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></div>
+        <div><label>Date</label><input placeholder="Mar 9" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
+        <div><label>Note</label><input placeholder="Optional" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
+        <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button></div>
+      </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading...</div>:(
+      <>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:14,marginBottom:24}}>
+          {[{l:"Total Amount",v:`₱${totalAll.toLocaleString()}`,c:"#C9A84C",sub:`${records.length} entries`},{l:"Verified",v:`₱${totalV.toLocaleString()}`,c:"#7BE0B0",sub:`${records.filter(r=>r.status==="Verified").length} records`},{l:"Pending",v:`₱${totalP.toLocaleString()}`,c:"#E0B07B",sub:`${records.filter(r=>r.status==="Pending").length} records`}].map(s=>(
+            <div key={s.l} style={{background:"#1A1A28",padding:"18px 22px",borderLeft:`3px solid ${s.c}`}}>
+              <div style={{fontSize:".72rem",color:s.c,marginBottom:4,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em",textTransform:"uppercase"}}>{s.l}</div>
+              <div className="font-display" style={{fontSize:"1.5rem",color:s.c}}>{s.v}</div>
+              <div style={{fontSize:".75rem",color:"#9A9080",marginTop:4}}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+        {typeBreakdown.length>0&&(
+          <div style={{marginBottom:24}}>
+            <div className="font-sans" style={{fontSize:".72rem",color:"#9A9080",letterSpacing:".1em",marginBottom:12,textTransform:"uppercase"}}>By Category</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
+              {typeBreakdown.map((t,i)=>{
+                const colors=["#C9A84C","#7BE0B0","#B07BE0","#7B9EF0","#E0B07B","#E07B7B"];
+                const c=colors[i%colors.length];
+                const pct=totalAll>0?Math.round((t.total/totalAll)*100):0;
+                return (
+                  <div key={t.type} style={{background:"#1A1A28",border:`1px solid ${c}30`,padding:"14px 18px"}}>
+                    <div style={{fontSize:".7rem",color:c,fontFamily:"'Tenor Sans',sans-serif",marginBottom:6}}>{t.type.toUpperCase()}</div>
+                    <div className="font-display" style={{fontSize:"1.2rem",color:c,marginBottom:6}}>₱{t.total.toLocaleString()}</div>
+                    <div style={{background:"#22223A",height:5,borderRadius:3,marginBottom:4}}>
+                      <div style={{background:c,height:5,borderRadius:3,width:`${pct}%`}}/>
+                    </div>
+                    <div style={{color:"#9A9080",fontSize:".72rem"}}>{t.count} entries · {pct}%</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr style={{borderBottom:"1px solid #22223A"}}>{["Description","Type","Amount","Date","Note","Status","Action"].map(h=><th key={h} className="font-sans" style={{padding:"10px 14px",textAlign:"left",fontSize:".68rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {records.map(r=>(
+                <tr key={r.id} style={{borderBottom:"1px solid #1A1A28"}} onMouseEnter={e=>e.currentTarget.style.background="#1E1E2E"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <td style={{padding:"11px 14px",fontWeight:600}}>{r.name}</td>
+                  <td style={{padding:"11px 14px",color:"#9A9080",fontSize:".9rem"}}>{r.type}</td>
+                  <td style={{padding:"11px 14px",color:"#7BE0B0",fontWeight:600}}>₱{Number(r.amount).toLocaleString()}</td>
+                  <td style={{padding:"11px 14px",color:"#9A9080",fontSize:".85rem"}}>{r.date||new Date(r.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</td>
+                  <td style={{padding:"11px 14px",color:"#9A9080",fontSize:".85rem"}}>{r.note||"—"}</td>
+                  <td style={{padding:"11px 14px"}}><span style={{padding:"2px 10px",fontSize:".68rem",background:r.status==="Verified"?"rgba(123,224,176,.1)":"rgba(224,176,123,.1)",color:r.status==="Verified"?"#7BE0B0":"#E0B07B",border:`1px solid ${r.status==="Verified"?"rgba(123,224,176,.3)":"rgba(224,176,123,.3)"}`}}>{r.status}</span></td>
+                  <td style={{padding:"11px 14px"}}><div style={{display:"flex",gap:8}}>
+                    {r.status==="Pending"&&<button onClick={()=>verify(r.id)} style={{background:"none",border:"none",color:"#7BE0B0",cursor:"pointer",fontSize:".82rem"}}>✓ Verify</button>}
+                    <button onClick={()=>setConfirmId(r.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".82rem"}}>Remove</button>
+                  </div></td>
+                </tr>
+              ))}
+              {records.length===0&&<tr><td colSpan={7} style={{padding:32,textAlign:"center",color:"#9A9080"}}>No entries yet. Click "+ Add Entry" to start.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
+    </div>
+  );
+}
+
+function MonthlyBudgetPanel() {
+  const [budgets, setBudgets] = useState([]);
+  const [confirmId,setConfirmId]=useState(null);
+  const [form, setBudgetForm] = useState({category:"",allocated:"",spent:"",note:""});
+  const [adding, setAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
+  useEffect(()=>{
+    dbGet("documents","?order=created_at.desc").then(d=>{
+      if(d) setBudgets(d.filter(x=>x.type==="Budget").map(x=>{try{const p=JSON.parse(x.name||"{}");return{...x,...p};}catch{return x;}}));
+      setLoading(false);
+    });
+  },[]);
+  const add = async () => {
+    if(!form.category||!form.allocated) return;
+    const budgetData = JSON.stringify({category:form.category,allocated:Number(form.allocated),spent:Number(form.spent||0),note:form.note});
+    const payload = {name:budgetData, type:"Budget", uploaded_by:"Treasurer"};
+    const r = await dbInsert("documents", payload);
+    if(r&&r[0]){setBudgets([...budgets,{...r[0],category:form.category,allocated:Number(form.allocated),spent:Number(form.spent||0),note:form.note}]);addLog("📋","Budget set: "+form.category+" — ₱"+form.allocated,"Financial","Treasurer");}
+    setBudgetForm({category:"",allocated:"",spent:"",note:""});setAdding(false);
+  };
+  const updateSpent = async(b, newSpent) => {
+    const newName = JSON.stringify({category:b.category,allocated:b.allocated,spent:Number(newSpent),note:b.note||""});
+    await dbUpdate("documents",b.id,{name:newName});
+    setBudgets(budgets.map(x=>x.id===b.id?{...x,spent:Number(newSpent)}:x));
+  };
+  const remove = async(id)=>{await dbDelete("documents",id);setBudgets(budgets.filter(x=>x.id!==id));};
+  const totalAlloc = budgets.reduce((s,b)=>s+Number(b.allocated||0),0);
+  const totalSpent = budgets.reduce((s,b)=>s+Number(b.spent||0),0);
+  return (
+    <div>
+      <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:24}}>📋 Monthly Budget</h4>
+      {budgets.length>0&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:16,marginBottom:24}}>
+          {[{l:"Total Allocated",v:`₱${totalAlloc.toLocaleString()}`,c:"#7B9EF0"},{l:"Total Spent",v:`₱${totalSpent.toLocaleString()}`,c:"#E0B07B"},{l:"Remaining",v:`₱${(totalAlloc-totalSpent).toLocaleString()}`,c:"#7BE0B0"}].map(s=>(
+            <div key={s.l} style={{background:"#1A1A28",padding:"18px 22px",borderLeft:`3px solid ${s.c}`}}>
+              <div style={{fontSize:".72rem",color:s.c,marginBottom:4,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em",textTransform:"uppercase"}}>{s.l}</div>
+              <div className="font-display" style={{fontSize:"1.5rem",color:s.c}}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:12}}>
+        <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>Budget Allocations</div>
+        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Budget"}</button>
+      </div>
+      {adding&&(<div style={{background:"#12121A",border:"1px solid #22223A",padding:20,marginBottom:20,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12}}>
+        <div><label>Category</label><input placeholder="e.g. Utilities" value={form.category} onChange={e=>setBudgetForm({...form,category:e.target.value})}/></div>
+        <div><label>Allocated (₱)</label><input type="number" placeholder="0" value={form.allocated} onChange={e=>setBudgetForm({...form,allocated:e.target.value})}/></div>
+        <div><label>Spent so far (₱)</label><input type="number" placeholder="0" value={form.spent} onChange={e=>setBudgetForm({...form,spent:e.target.value})}/></div>
+        <div><label>Note</label><input placeholder="Optional" value={form.note} onChange={e=>setBudgetForm({...form,note:e.target.value})}/></div>
+        <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button></div>
+      </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading...</div>:(
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {budgets.map(b=>{
+          const alloc=Number(b.allocated)||0; const spent=Number(b.spent)||0;
+          const pct=alloc>0?Math.min(100,Math.round((spent/alloc)*100)):0;
+          const c=pct>=90?"#E07B7B":pct>=60?"#E0B07B":"#7BE0B0";
+          return (
+            <div key={b.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"18px 22px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                <div><div style={{fontWeight:700,marginBottom:2}}>{b.category}</div>{b.note&&<div style={{color:"#9A9080",fontSize:".82rem"}}>{b.note}</div>}</div>
+                <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:".7rem",color:"#9A9080",fontFamily:"'Tenor Sans',sans-serif"}}>SPENT / ALLOCATED</div>
+                    <div style={{fontWeight:700,color:c}}>₱{spent.toLocaleString()} / ₱{alloc.toLocaleString()}</div>
+                  </div>
+                  <input type="number" placeholder="Update spent" onBlur={e=>e.target.value&&updateSpent(b,e.target.value)}
+                    style={{width:110,padding:"6px 10px",background:"#12121A",border:"1px solid #22223A",color:"#F0EAD6",fontSize:".82rem"}}/>
+                  <button onClick={()=>setConfirmId(b.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".82rem"}}>Remove</button>
+                </div>
+              </div>
+              <div style={{background:"#22223A",height:8,borderRadius:4,marginBottom:6}}>
+                <div style={{background:c,height:8,borderRadius:4,width:`${pct}%`,transition:"width .5s"}}/>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"#9A9080"}}>
+                <span style={{color:c}}>{pct}% used</span>
+                <span>Remaining: <span style={{color:"#7BE0B0",fontWeight:600}}>₱{(alloc-spent).toLocaleString()}</span></span>
+              </div>
+            </div>
+          );
+        })}
+        {budgets.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No budget allocations yet. Click "+ Add Budget" to start tracking.</div>}
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
+    </div>
+  );
+}
+
+function UpcomingEventsPanel() {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
+  const [form, setForm] = useState({title:"",date:"",time:"",event_type:"worship"});
+  const typeColor = t=>t==="worship"?"#C9A84C":t==="prayer"?"#B07BE0":t==="youth"?"#7BE0B0":t==="event"?"#7B9EF0":t==="devotion"?"#E0B07B":"#9A9080";
+  const typeIcon  = t=>t==="worship"?"✝️":t==="prayer"?"🙏":t==="youth"?"🌟":t==="event"?"🎉":t==="devotion"?"📖":"📅";
+
+  useEffect(()=>{
+    dbGet("announcements","?author=eq.__upcoming__&order=created_at.asc")
+      .then(d=>{if(d)setEvents(d);setLoading(false);});
+  },[]);
+
+  const add = async () => {
+    if(!form.title||!form.date) return;
+    const payload = {
+      title: form.title,
+      body: JSON.stringify({date:form.date, time:form.time, event_type:form.event_type}),
+      author: "__upcoming__",
+    };
+    const r = await dbInsert("announcements", payload);
+    if(r&&r[0]){
+      setEvents([...events, {...r[0], _date:form.date, _time:form.time, _evtype:form.event_type}]);
+      addLog("📅","Upcoming event added: "+form.title,"Events Dept","Events Dept");
+    }
+    setForm({title:"",date:"",time:"",event_type:"worship"});setAdding(false);
+  };
+
+  const remove = async(id)=>{await dbDelete("announcements",id);setEvents(events.filter(x=>x.id!==id));};
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <h4 className="font-display" style={{color:"#E8CC7A"}}>📅 Upcoming Events</h4>
+        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Event"}</button>
+      </div>
+      {adding&&(
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:20,marginBottom:20,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12}}>
+          <div><label>Title</label><input placeholder="Event name" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
+          <div><label>Date</label><input placeholder="Apr 13" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
+          <div><label>Time</label><input placeholder="9:00 AM" value={form.time} onChange={e=>setForm({...form,time:e.target.value})}/></div>
+          <div><label>Type</label><select value={form.event_type} onChange={e=>setForm({...form,event_type:e.target.value})}>{["worship","prayer","youth","event","devotion"].map(t=><option key={t}>{t}</option>)}</select></div>
+          <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button></div>
+        </div>
+      )}
+      {loading?<div style={{color:"#9A9080",padding:32,textAlign:"center"}}>Loading...</div>:(
+      <>
+        {events.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:40}}>No upcoming events yet. Click "+ Add Event" to add one.</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {events.map(e=>{
+            let _parsed={};try{_parsed=JSON.parse(e.body||"{}");}catch{}
+            const evType = _parsed.event_type||"event";
+            const evDate = e._date||_parsed.date||"";
+            const evTime = e._time||_parsed.time||"";
+            const c = typeColor(evType);
+            const parts = evDate.split(" ");
+            return (
+              <div key={e.id} style={{background:"#1A1A28",borderLeft:`3px solid ${c}`,padding:"18px 24px",display:"flex",gap:20,alignItems:"center",flexWrap:"wrap",transition:"all .2s",cursor:"default"}}
+                onMouseEnter={ev=>{ev.currentTarget.style.background="#22223A";ev.currentTarget.style.transform="translateY(-3px)";ev.currentTarget.style.boxShadow=`0 12px 32px ${c}25`;}}
+                onMouseLeave={ev=>{ev.currentTarget.style.background="#1A1A28";ev.currentTarget.style.transform="translateY(0)";ev.currentTarget.style.boxShadow="none";}}>
+                <div style={{textAlign:"center",minWidth:56,flexShrink:0}}>
+                  <div className="font-sans" style={{fontSize:".6rem",color:c,letterSpacing:".15em",textTransform:"uppercase"}}>{(parts[0]||"").toUpperCase()}</div>
+                  <div className="font-display" style={{fontSize:"1.8rem",lineHeight:1,color:"#F0EAD6"}}>{parts[1]||""}</div>
+                </div>
+                <div style={{fontSize:"1.3rem"}}>{typeIcon(evType)}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:600,fontSize:"1rem",marginBottom:2}}>{e.title}</div>
+                  <div style={{color:"#9A9080",fontSize:".85rem"}}>{evTime}</div>
+                </div>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                  <div style={{padding:"3px 12px",fontSize:".68rem",background:`${c}18`,color:c,border:`1px solid ${c}40`,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em",textTransform:"uppercase"}}>{evType}</div>
+                  <button onClick={()=>setConfirmId(e.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".82rem"}}>Remove</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {events.length>0&&<div style={{marginTop:12,color:"#9A9080",fontSize:".8rem",textAlign:"right",fontFamily:"'Tenor Sans',sans-serif"}}>{events.length} event{events.length!==1?"s":""} scheduled</div>}
+      </>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
     </div>
   );
 }
 
 function EventsPanel({viewOnly=false}) {
-  const [events,setEvents]=useState([...EVENTS]);
+  const [events,setEvents]=useState([]);
+  const [confirmId,setConfirmId]=useState(null);
   const [form,setForm]=useState({date:"",title:"",time:"",type:"worship"});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.date||!form.title)return;setEvents([...events,{...form}]);addLog("📅","New event: "+form.title+" on "+form.date,"Events Dept","Events Dept");setForm({date:"",title:"",time:"",type:"worship"});setAdding(false);};
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{dbGet("events","?order=created_at.desc").then(d=>{if(d)setEvents(d);setLoading(false);});},[]);
+  const add=async()=>{
+    if(!form.date||!form.title)return;
+    const r=await dbInsert("events",form);
+    if(r&&r[0]){setEvents([r[0],...events]);addLog("📅","New event: "+form.title+" on "+form.date,"Events Dept","Events Dept");}
+    setForm({date:"",title:"",time:"",type:"worship"});setAdding(false);
+  };
+  const remove=async(id)=>{await dbDelete("events",id);setEvents(events.filter(x=>x.id!==id));};
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -606,43 +973,53 @@ function EventsPanel({viewOnly=false}) {
         <div><label>Type</label><select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{["worship","prayer","youth","event","devotion"].map(t=><option key={t} value={t}>{t}</option>)}</select></div>
         <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button></div>
       </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading events...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {events.map(e=>(
-          <div key={e.title} className={`card ev-${e.type}`} style={{background:"#1A1A28",borderLeft:"3px solid",padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+          <div key={e.id} className={`card ev-${e.type}`} style={{background:"#1A1A28",borderLeft:"3px solid",padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,flexWrap:"wrap"}}>
             <div style={{display:"flex",gap:20,alignItems:"center"}}>
               <div style={{textAlign:"center",minWidth:60}}>
-                <div className="font-sans" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>{e.date.split(" ")[0]?.toUpperCase()}</div>
-                <div className="font-display" style={{fontSize:"1.5rem"}}>{e.date.split(" ")[1]}</div>
+                <div className="font-sans" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>{(e.date||"").split(" ")[0]?.toUpperCase()}</div>
+                <div className="font-display" style={{fontSize:"1.5rem"}}>{(e.date||"").split(" ")[1]}</div>
               </div>
               <div><div style={{fontWeight:600,marginBottom:2}}>{e.title}</div><div style={{color:"#9A9080",fontSize:".85rem"}}>{e.time}</div></div>
             </div>
-            {!viewOnly&&<button onClick={()=>setEvents(events.filter(x=>x.title!==e.title))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button>}
+            {!viewOnly&&<button onClick={()=>setConfirmId(e.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button>}
           </div>
         ))}
-      </div>
+        {events.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No events yet. Add one!</div>}
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
     </div>
   );
 }
 
-function AnnouncementsPanel() {
-  const [posts,setPosts]=useState([
-    {id:1,title:"Easter Sunday Special Service",body:"Join us for a special Easter Sunday celebration on April 6 at 8:00 AM.",date:"Mar 1",author:"Secretary"},
-    {id:2,title:"Monthly Devotion Reminder",body:"By end of March, everyone is encouraged to share their devotion.",date:"Mar 2",author:"Head"},
-  ]);
+function AnnouncementsPanel({canPost=false}) {
+  const [posts,setPosts]=useState([]);
+  const [confirmId,setConfirmId]=useState(null);
   const [form,setForm]=useState({title:"",body:""});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.title||!form.body)return;setPosts([...posts,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),author:"Staff"}]);addLog("📢","Announcement posted: "+form.title,"Secretary","Secretary");setForm({title:"",body:""});setAdding(false);};
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{dbGet("announcements","?author=neq.__upcoming__&order=created_at.desc").then(d=>{if(d)setPosts(d);setLoading(false);});},[]);
+  const add=async()=>{
+    if(!form.title||!form.body)return;
+    const r=await dbInsert("announcements",{...form,author:"Staff"});
+    if(r&&r[0]){setPosts([r[0],...posts]);addLog("📢","Announcement posted: "+form.title,"Secretary","Secretary");}
+    setForm({title:"",body:""});setAdding(false);
+  };
+  const remove=async(id)=>{await dbDelete("announcements",id);setPosts(posts.filter(x=>x.id!==id));};
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <h4 className="font-display" style={{color:"#E8CC7A"}}>📢 Announcements</h4>
-        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Post Announcement"}</button>
+        {canPost&&<button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Post Announcement"}</button>}
       </div>
-      {adding&&(<div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:12}}>
+      {canPost&&adding&&(<div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:12}}>
         <div><label>Title</label><input placeholder="Announcement title" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
         <div><label>Message</label><textarea rows={4} placeholder="Write your announcement..." value={form.body} onChange={e=>setForm({...form,body:e.target.value})} style={{resize:"vertical"}}/></div>
         <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 24px",fontSize:".75rem"}} onClick={add}>Post</button>
       </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         {posts.map(p=>(
           <div key={p.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative"}}>
@@ -651,76 +1028,130 @@ function AnnouncementsPanel() {
               <div>
                 <h5 style={{fontWeight:700,fontSize:"1rem",marginBottom:6}}>{p.title}</h5>
                 <p style={{color:"#B0A898",lineHeight:1.7,fontSize:".95rem"}}>{p.body}</p>
-                <div style={{marginTop:12,color:"#9A9080",fontSize:".8rem"}}>Posted {p.date} · by {p.author}</div>
+                <div style={{marginTop:12,color:"#9A9080",fontSize:".8rem"}}>Posted {new Date(p.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})} · by {p.author}</div>
               </div>
-              <button onClick={()=>setPosts(posts.filter(x=>x.id!==p.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",flexShrink:0}}>Delete</button>
+              {canPost&&<button onClick={()=>setConfirmId(p.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",flexShrink:0}}>Delete</button>}
             </div>
           </div>
         ))}
-      </div>
+        {posts.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No announcements yet.</div>}
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
     </div>
   );
 }
 
-function DocumentsPanel() {
-  const [docs,setDocs]=useState([
-    {id:1,name:"March Meeting Minutes.pdf",type:"Meeting Minutes",date:"Mar 1",uploadedBy:"Jam",size:"24 KB"},
-    {id:2,name:"Member List 2026.docx",type:"Member Records",date:"Mar 2",uploadedBy:"Jam",size:"12 KB"},
-    {id:3,name:"Easter Program.pdf",type:"Event Program",date:"Mar 3",uploadedBy:"Jam",size:"48 KB"},
-  ]);
+function DocumentsPanel({user}) {
+  const [docs,setDocs]=useState([]);
+  const [confirmId,setConfirmId]=useState(null);
   const [form,setForm]=useState({name:"",type:"Meeting Minutes"});
+  const [file,setFile]=useState(null);
+  const [fileData,setFileData]=useState(null);
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.name)return;setDocs([...docs,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),uploadedBy:"Jam",size:"—"}]);addLog("📄","Document uploaded: "+form.name+" ("+form.type+")","Secretary","Jam");setForm({name:"",type:"Meeting Minutes"});setAdding(false);};
-  const icon=(t)=>t==="Meeting Minutes"?"📝":t==="Member Records"?"👥":t==="Financial Report"?"💰":"📄";
+  const [loading,setLoading]=useState(true);
+  const [uploading,setUploading]=useState(false);
+
+  useEffect(()=>{dbGet("documents","?order=created_at.desc").then(d=>{if(d)setDocs(d.filter(x=>x.type!=="Budget"));setLoading(false);});},[]);
+
+  const handleFile = (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    setFile(f);
+    if(!form.name) setForm(prev=>({...prev,name:f.name}));
+    const reader = new FileReader();
+    reader.onload = (ev) => setFileData(ev.target.result);
+    reader.readAsDataURL(f);
+  };
+
+  const add = async () => {
+    if(!form.name) return;
+    setUploading(true);
+    const uploader = user?.username || user?.role || "Staff";
+    const payload = {name:form.name, type:form.type, uploaded_by:uploader, ...(fileData?{file_url:fileData}:{})};
+    const r = await dbInsert("documents", payload);
+    if(r&&r[0]){
+      setDocs([r[0],...docs]);
+      addLog("📄","Document uploaded: "+form.name+" ("+form.type+")",user?.role||"Secretary",uploader);
+    }
+    setForm({name:"",type:"Meeting Minutes"});
+    setFile(null);setFileData(null);setAdding(false);setUploading(false);
+  };
+
+  const remove=async(id)=>{await dbDelete("documents",id);setDocs(docs.filter(x=>x.id!==id));};
+  const icon=(t)=>t==="Meeting Minutes"?"📝":t==="Member Records"?"👥":t==="Financial Report"?"💰":t==="Event Program"?"🎉":t==="Announcement"?"📢":"📄";
+
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <h4 className="font-display" style={{color:"#E8CC7A"}}>📁 Upload Documents</h4>
         <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Upload Document"}</button>
       </div>
-      {adding&&(<div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div><label>Document Name</label><input placeholder="e.g. March Minutes.pdf" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
-          <div><label>Document Type</label>
-            <select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
-              {["Meeting Minutes","Member Records","Event Program","Announcement","Financial Report","Other"].map(t=><option key={t}>{t}</option>)}
-            </select>
+      {adding&&(
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div><label>Document Name</label><input placeholder="e.g. March Minutes" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+            <div><label>Document Type</label>
+              <select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+                {["Meeting Minutes","Member Records","Event Program","Announcement","Financial Report","Other"].map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
           </div>
+          <label style={{display:"block",cursor:"pointer"}}>
+            <div style={{border:"2px dashed "+(file?"#C9A84C":"#22223A"),padding:32,textAlign:"center",color:file?"#E8CC7A":"#9A9080",fontSize:".9rem",background:file?"rgba(201,168,76,.05)":"transparent",transition:"all .2s"}}
+              onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#C9A84C";}}
+              onDragLeave={e=>{e.currentTarget.style.borderColor=file?"#C9A84C":"#22223A";}}
+              onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f){const fakeEv={target:{files:[f]}};handleFile(fakeEv);}}}>
+              {file
+                ? <><div style={{fontSize:32,marginBottom:8}}>📎</div><div style={{fontWeight:600}}>{file.name}</div><div style={{fontSize:".8rem",marginTop:4,color:"#9A9080"}}>{(file.size/1024).toFixed(1)} KB · Click to change</div></>
+                : <><div style={{fontSize:32,marginBottom:8}}>📂</div><div>Click to choose file or drag & drop</div><div style={{fontSize:".8rem",marginTop:4}}>PDF, DOC, XLSX, JPG, PNG supported</div></>}
+            </div>
+            <input type="file" accept=".pdf,.doc,.docx,.xlsx,.xls,.jpg,.jpeg,.png,.txt" onChange={handleFile} style={{display:"none"}}/>
+          </label>
+          <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 24px",fontSize:".75rem"}} onClick={add} disabled={uploading}>
+            {uploading?"Saving...":"Save Document"}
+          </button>
         </div>
-        <div style={{border:"2px dashed #22223A",padding:32,textAlign:"center",color:"#9A9080",fontSize:".9rem",cursor:"pointer"}}>
-          📎 Click to attach file — or enter document name above to record it
-        </div>
-        <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 24px",fontSize:".75rem"}} onClick={add}>Save Document</button>
-      </div>)}
+      )}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading documents...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {docs.map(d=>(
-          <div key={d.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+          <div key={d.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,transition:"all .2s"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="#22223A";e.currentTarget.style.borderColor="#C9A84C33";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(201,168,76,.1)";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="#1A1A28";e.currentTarget.style.borderColor="#22223A";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
             <div style={{display:"flex",gap:16,alignItems:"center"}}>
               <div style={{width:44,height:44,background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{icon(d.type)}</div>
               <div>
                 <div style={{fontWeight:600,marginBottom:2}}>{d.name}</div>
-                <div style={{color:"#9A9080",fontSize:".8rem"}}>{d.type} · {d.size} · Uploaded {d.date} by {d.uploadedBy}</div>
+                <div style={{color:"#9A9080",fontSize:".8rem"}}>{d.type} · Uploaded {new Date(d.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})} by {d.uploaded_by}</div>
               </div>
             </div>
-            <div style={{display:"flex",gap:12}}>
-              <button style={{background:"none",border:"none",color:"#C9A84C",cursor:"pointer",fontSize:".85rem"}}>⬇ Download</button>
-              <button onClick={()=>setDocs(docs.filter(x=>x.id!==d.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Delete</button>
+            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+              {d.file_url&&<a href={d.file_url} download={d.name} style={{color:"#C9A84C",fontSize:".8rem",textDecoration:"none",fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".05em"}}>⬇ Download</a>}
+              <button onClick={()=>setConfirmId(d.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Delete</button>
             </div>
           </div>
         ))}
-      </div>
+        {docs.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No documents yet.</div>}
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
     </div>
   );
 }
-
 function AttendancePanel() {
   const allMembers=["Kuya Ivan","Ange","Angie","Ced","Precious","Jam","Pipper","Tine","Krislene","Ariane"];
-  const [logs,setLogs]=useState([{id:1,date:"Mar 2 (Sunday)",present:["Kuya Ivan","Ange","Ced","Jam","Precious"],total:10}]);
+  const [logs,setLogs]=useState([]);
   const [active,setActive]=useState(false);
   const [present,setPresent]=useState([]);
   const [dateStr,setDateStr]=useState("");
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{dbGet("attendance","?order=created_at.desc").then(d=>{if(d)setLogs(d.map(x=>({...x,present:x.note?JSON.parse(x.note):[]})));setLoading(false);});},[]);
   const toggle=(name)=>setPresent(p=>p.includes(name)?p.filter(x=>x!==name):[...p,name]);
-  const save=()=>{if(!dateStr)return;setLogs([...logs,{id:Date.now(),date:dateStr,present,total:allMembers.length}]);setActive(false);setPresent([]);setDateStr("");};
+  const save=async()=>{
+    if(!dateStr)return;
+    const r=await dbInsert("attendance",{date:dateStr,present:present.length,total:allMembers.length,note:JSON.stringify(present)});
+    if(r&&r[0]){setLogs([{...r[0],present},...logs]);addLog("✅","Attendance recorded — "+present.length+"/"+allMembers.length+" present","Secretary","Secretary");}
+    setActive(false);setPresent([]);setDateStr("");
+  };
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -740,65 +1171,112 @@ function AttendancePanel() {
         <div style={{color:"#9A9080",fontSize:".85rem",marginBottom:16}}>Present: {present.length} / {allMembers.length}</div>
         <button className="btnGold" style={{padding:"10px 24px",fontSize:".75rem"}} onClick={save}>Save Attendance</button>
       </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading attendance...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {logs.map(l=>(
           <div key={l.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:20}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,marginBottom:12}}>
-              <div><div style={{fontWeight:600,marginBottom:4}}>{l.date}</div><div style={{color:"#9A9080",fontSize:".85rem"}}>Present: {l.present.length} / {l.total}</div></div>
-              <div style={{padding:"4px 14px",background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",color:"#7BE0B0",fontSize:".8rem"}}>{Math.round((l.present.length/l.total)*100)}% attendance</div>
+              <div><div style={{fontWeight:600,marginBottom:4}}>{l.date}</div><div style={{color:"#9A9080",fontSize:".85rem"}}>Present: {l.present_count||l.present} / {l.total}</div></div>
+              <div style={{padding:"4px 14px",background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",color:"#7BE0B0",fontSize:".8rem"}}>{Math.round(((l.present_count||l.present)/l.total)*100)}% attendance</div>
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-              {l.present.map(name=><span key={name} style={{padding:"3px 10px",background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.2)",color:"#C9A84C",fontSize:".8rem"}}>{name}</span>)}
-            </div>
+            {Array.isArray(l.present)&&l.present.length>0&&(
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {l.present.map(name=><span key={name} style={{padding:"3px 10px",background:"rgba(201,168,76,.1)",border:"1px solid rgba(201,168,76,.2)",color:"#C9A84C",fontSize:".8rem"}}>{name}</span>)}
+              </div>
+            )}
           </div>
         ))}
-      </div>
+        {logs.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No attendance records yet.</div>}
+      </div>)}
     </div>
   );
 }
 
 function SongsPanel() {
-  const [songs, setSongs] = useState([...SONGS]);
-  const [playing, setPlaying] = useState(null); // index of currently playing song
+  const [songs, setSongs] = useState([]);
+  const [playing, setPlaying] = useState(null);
   const [form, setForm] = useState({title:"", author:"", category:"Praise", youtube:""});
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState("All");
+  const [loading, setLoading] = useState(true);
 
-  const add = () => {
-    if (!form.title) return;
-    setSongs([...songs, {...form}]);
-    addLog("🎵","Song added: \""+form.title+"\" by "+(form.author||"Unknown"),"Performance","Performance Dept");
+  useEffect(()=>{
+    dbGet("songs","?order=created_at.asc").then(d=>{if(d)setSongs(d);setLoading(false);});
+  },[]);
+
+  const getYouTubeId = (url) => {
+    if (!url) return null;
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  };
+
+  const catColor = (c) => c==="Praise"?"#C9A84C":c==="Worship"?"#B07BE0":c==="Hymn"?"#7B9EF0":c==="Special"?"#E07B7B":"#9A9080";
+  const cats = ["All","Praise","Worship","Hymn","Special"];
+  const filtered = filter==="All" ? songs : songs.filter(s=>s.category===filter);
+  const cur = playing!==null ? filtered[playing] : null;
+  const vid = cur ? getYouTubeId(cur.youtube) : null;
+
+  const addSong = async () => {
+    if(!form.title)return;
+    const r = await dbInsert("songs", form);
+    if(r&&r[0]){setSongs([...songs,r[0]]);addLog("🎵","Song added: \""+form.title+"\" by "+(form.author||"Unknown"),"Performance","Performance Dept");}
     setForm({title:"", author:"", category:"Praise", youtube:""});
     setAdding(false);
   };
 
-  const getYouTubeId = (url) => {
-    if (!url) return null;
-    const match = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : null;
+  const deleteSong = async (songId, idx) => {
+    await dbDelete("songs", songId);
+    const newSongs = songs.filter(s=>s.id!==songId);
+    setSongs(newSongs);
+    if(playing!==null){
+      const actualFiltered = filter==="All"?songs:songs.filter(s=>s.category===filter);
+      const deletedSong = actualFiltered[idx];
+      if(playing===idx) setPlaying(null);
+      else if(playing>idx) setPlaying(playing-1);
+    }
   };
-
-  const categories = ["All", "Praise", "Worship", "Hymn", "Special"];
-  const filtered = filter === "All" ? songs : songs.filter(s => s.category === filter);
-
-  const catColor = (c) => c==="Praise"?"#C9A84C":c==="Worship"?"#B07BE0":c==="Hymn"?"#7B9EF0":c==="Special"?"#E07B7B":"#9A9080";
-
-  const currentSong = playing !== null ? filtered[playing] : null;
-  const youtubeId = currentSong ? getYouTubeId(currentSong.youtube) : null;
 
   return (
     <div>
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
-        <h4 className="font-display" style={{color:"#E8CC7A"}}>🎵 Song List & Music Player</h4>
-        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>
-          {adding ? "Cancel" : "+ Add Song"}
-        </button>
+      <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:8}}>🎵 Song List & Music Player</h4>
+      <p style={{color:"#9A9080",marginBottom:20,fontSize:".9rem"}}>Manage and play worship songs for rehearsal and service.</p>
+
+      {cur && (
+        <div style={{background:"#12121A",border:"1px solid #B07BE0",marginBottom:20,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#B07BE0,transparent)"}}/>
+          <div style={{padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+            <div>
+              <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".12em",color:"#B07BE0",marginBottom:4}}>▶ NOW PLAYING</div>
+              <div style={{fontWeight:700}}>{cur.title}</div>
+              <div style={{color:"#9A9080",fontSize:".85rem"}}>{cur.author}</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setPlaying(playing>0?playing-1:filtered.length-1)} style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:36,height:36,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⏮</button>
+              <button onClick={()=>setPlaying(null)} style={{background:"rgba(224,123,123,.15)",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",width:36,height:36,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⏹</button>
+              <button onClick={()=>setPlaying(playing<filtered.length-1?playing+1:0)} style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:36,height:36,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⏭</button>
+            </div>
+          </div>
+          {vid ? (
+            <div style={{position:"relative",paddingBottom:"42%",background:"#000"}}>
+              <iframe src={`https://www.youtube.com/embed/${vid}?autoplay=1&rel=0`} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/>
+            </div>
+          ):(
+            <div style={{padding:"24px",textAlign:"center",color:"#9A9080",background:"#0A0A0F"}}>🎵 No YouTube link for this song.</div>
+          )}
+        </div>
+      )}
+
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {cats.map(c=>(
+            <button key={c} onClick={()=>{setFilter(c);setPlaying(null);}} style={{padding:"5px 14px",background:filter===c?catColor(c):"transparent",border:`1px solid ${filter===c?catColor(c):"#22223A"}`,color:filter===c?"#0A0A0F":catColor(c),cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".72rem",letterSpacing:".08em",transition:"all .2s"}}>{c}</button>
+          ))}
+        </div>
+        <button className="btnGold" style={{padding:"8px 18px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Song"}</button>
       </div>
 
-      {/* Add Song Form */}
-      {adding && (
-        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
+      {adding&&(
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:20,marginBottom:16,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12}}>
           <div><label>Song Title</label><input placeholder="Title" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
           <div><label>Author / Team</label><input placeholder="Author" value={form.author} onChange={e=>setForm({...form,author:e.target.value})}/></div>
           <div><label>Category</label>
@@ -807,119 +1285,48 @@ function SongsPanel() {
             </select>
           </div>
           <div><label>YouTube Link</label><input placeholder="https://youtube.com/watch?v=..." value={form.youtube} onChange={e=>setForm({...form,youtube:e.target.value})}/></div>
-          <div style={{display:"flex",alignItems:"flex-end"}}>
-            <button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={add}>Save</button>
-          </div>
+          <div style={{display:"flex",alignItems:"flex-end"}}><button className="btnGold" style={{padding:"12px 20px",fontSize:".75rem",width:"100%"}} onClick={addSong}>Add Song</button></div>
         </div>
       )}
 
-      {/* Now Playing */}
-      {currentSong && (
-        <div style={{background:"#12121A",border:"1px solid #B07BE0",padding:0,marginBottom:24,position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#B07BE0,transparent)"}}/>
-          <div style={{padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div>
-              <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".12em",color:"#B07BE0",marginBottom:4}}>▶ NOW PLAYING</div>
-              <div style={{fontWeight:700,fontSize:"1.05rem"}}>{currentSong.title}</div>
-              <div style={{color:"#9A9080",fontSize:".85rem"}}>{currentSong.author}</div>
-            </div>
-            <div style={{display:"flex",gap:10,alignItems:"center"}}>
-              <button onClick={()=>setPlaying(playing > 0 ? playing-1 : filtered.length-1)}
-                style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:36,height:36,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏮</button>
-              <button onClick={()=>setPlaying(null)}
-                style={{background:"rgba(224,123,123,.15)",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",width:36,height:36,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏹</button>
-              <button onClick={()=>setPlaying(playing < filtered.length-1 ? playing+1 : 0)}
-                style={{background:"rgba(176,123,224,.15)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",width:36,height:36,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>⏭</button>
-            </div>
-          </div>
-          {/* YouTube embed */}
-          {youtubeId ? (
-            <div style={{position:"relative",paddingBottom:"42%",background:"#000"}}>
-              <iframe
-                src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`}
-                style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          ) : (
-            <div style={{padding:"32px 20px",textAlign:"center",color:"#9A9080",fontSize:".9rem",background:"#0A0A0F"}}>
-              🎵 No YouTube link for this song. <span style={{color:"#C9A84C"}}>Add a link to enable playback.</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Category filter */}
-      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-        {categories.map(c=>(
-          <button key={c} onClick={()=>{setFilter(c);setPlaying(null);}}
-            style={{padding:"6px 16px",background:filter===c?catColor(c):"transparent",border:`1px solid ${filter===c?catColor(c):"#22223A"}`,color:filter===c?"#0A0A0F":catColor(c),cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".75rem",letterSpacing:".08em",transition:"all .2s"}}>
-            {c}
-          </button>
-        ))}
-        <span style={{marginLeft:"auto",color:"#9A9080",fontSize:".85rem",alignSelf:"center"}}>{filtered.length} song{filtered.length!==1?"s":""}</span>
-      </div>
-
-      {/* Song list */}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading songs...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.map((s, i) => {
-          const isPlaying = playing === i;
-          const vid = getYouTubeId(s.youtube);
-          return (
-            <div key={i} style={{background:isPlaying?"#1E1A2E":"#1A1A28",border:`1px solid ${isPlaying?"#B07BE0":"#22223A"}`,padding:"14px 20px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",transition:"all .2s"}}
-              onClick={()=>setPlaying(isPlaying ? null : i)}>
-              {/* Play/pause icon */}
-              <div style={{width:40,height:40,borderRadius:"50%",background:isPlaying?"#B07BE0":"rgba(176,123,224,.15)",border:`1px solid ${isPlaying?"#B07BE0":"rgba(176,123,224,.4)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s",fontSize:16,color:isPlaying?"#0A0A0F":"#B07BE0"}}>
-                {isPlaying ? "⏸" : "▶"}
+        {filtered.map((s,i)=>{
+          const ip=playing===i;
+          const sv=getYouTubeId(s.youtube);
+          return(
+            <div key={s.id||i} style={{background:ip?"#1E1A2E":"#12121A",border:`1px solid ${ip?"#B07BE0":"#22223A"}`,padding:"12px 20px",display:"flex",alignItems:"center",gap:14,transition:"all .2s"}}>
+              <div onClick={()=>setPlaying(ip?null:i)} style={{width:40,height:40,borderRadius:"50%",background:ip?"#B07BE0":"rgba(176,123,224,.15)",border:`1px solid ${ip?"#B07BE0":"rgba(176,123,224,.4)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15,color:ip?"#0A0A0F":"#B07BE0",cursor:"pointer",transition:"all .2s"}}>{ip?"⏸":"▶"}</div>
+              <div onClick={()=>setPlaying(ip?null:i)} style={{flex:1,minWidth:0,cursor:"pointer"}}>
+                <div style={{fontWeight:600,marginBottom:2,color:ip?"#E8CC7A":"#F0EAD6"}}>{s.title}</div>
+                <div style={{color:"#9A9080",fontSize:".82rem"}}>{s.author}</div>
               </div>
-              {/* Song info */}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:600,marginBottom:2,color:isPlaying?"#E8CC7A":"#F0EAD6"}}>{s.title}</div>
-                <div style={{color:"#9A9080",fontSize:".85rem"}}>{s.author}</div>
-              </div>
-              {/* Category badge */}
-              <span style={{padding:"2px 10px",background:`${catColor(s.category)}15`,border:`1px solid ${catColor(s.category)}40`,color:catColor(s.category),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif",flexShrink:0}}>
-                {s.category}
-              </span>
-              {/* YouTube indicator */}
-              <span style={{fontSize:13,color:vid?"#E07B7B":"#3A3A50",flexShrink:0}} title={vid?"Has YouTube link":"No YouTube link"}>
-                {vid ? "▶ YT" : "—"}
-              </span>
-              {/* Remove */}
-              <button
-                style={{background:"none",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",cursor:"pointer",fontSize:".75rem",flexShrink:0,padding:"4px 10px",fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".05em",transition:"all .2s"}}
-                onMouseEnter={e=>{e.currentTarget.style.background="rgba(224,123,123,.15)";}}
-                onMouseLeave={e=>{e.currentTarget.style.background="none";}}
-                onClick={e=>{
-                  e.stopPropagation();
-                  const actualIndex = songs.indexOf(s);
-                  if (playing === i) setPlaying(null);
-                  else if (playing !== null && playing > i) setPlaying(playing - 1);
-                  setSongs(songs.filter((_, j) => j !== actualIndex));
-                }}>
-                🗑 Delete
-              </button>
+              <span style={{padding:"2px 8px",background:`${catColor(s.category)}15`,border:`1px solid ${catColor(s.category)}40`,color:catColor(s.category),fontSize:".68rem",fontFamily:"'Tenor Sans',sans-serif",flexShrink:0}}>{s.category}</span>
+              <span style={{fontSize:11,color:sv?"#E07B7B":"#3A3A50",flexShrink:0}}>{sv?"▶ YT":"—"}</span>
+              <button onClick={()=>deleteSong(s.id,i)} style={{background:"none",border:"1px solid rgba(224,123,123,.3)",color:"#E07B7B",cursor:"pointer",padding:"3px 10px",fontSize:".72rem",flexShrink:0,fontFamily:"'Tenor Sans',sans-serif"}}>🗑</button>
             </div>
           );
         })}
-      </div>
-
-      {filtered.length === 0 && (
-        <div style={{textAlign:"center",padding:"40px 0",color:"#9A9080"}}>No songs in this category.</div>
-      )}
+        {filtered.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#9A9080"}}>No songs yet. Add one!</div>}
+      </div>)}
     </div>
   );
 }
 
 function DevotionPanel() {
-  const [devotions,setDevotions]=useState([
-    {id:1,name:"Kuya Ivan",book:"Psalms",insight:"God is our rock and our strength in every trial.",date:"Feb 28",likes:5},
-    {id:2,name:"Jam",book:"Proverbs",insight:"Wisdom begins with the fear of the Lord. This month I learned to trust His timing.",date:"Feb 28",likes:3},
-  ]);
+  const [devotions,setDevotions]=useState([]);
+  const [confirmId,setConfirmId]=useState(null);
   const [form,setForm]=useState({name:"",book:"",insight:""});
   const [adding,setAdding]=useState(false);
-  const add=()=>{if(!form.name||!form.insight)return;setDevotions([...devotions,{id:Date.now(),...form,date:"Mar "+new Date().getDate(),likes:0}]);addLog("📖",form.name+" shared a devotion from "+(form.book||"the Bible"),"Member",form.name);setForm({name:"",book:"",insight:""});setAdding(false);};
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{dbGet("devotions","?order=created_at.desc").then(d=>{if(d)setDevotions(d);setLoading(false);});},[]);
+  const add=async()=>{
+    if(!form.name||!form.insight)return;
+    const r=await dbInsert("devotions",{...form,likes:0});
+    if(r&&r[0]){setDevotions([r[0],...devotions]);addLog("📖",form.name+" shared a devotion from "+(form.book||"the Bible"),"Member",form.name);}
+    setForm({name:"",book:"",insight:""});setAdding(false);
+  };
+  const like=async(id,likes)=>{await dbUpdate("devotions",id,{likes:likes+1});setDevotions(devotions.map(x=>x.id===id?{...x,likes:likes+1}:x));};
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -934,6 +1341,7 @@ function DevotionPanel() {
         <div><label>Your Insight / Reflection</label><textarea rows={4} placeholder="Share what God has taught you..." value={form.insight} onChange={e=>setForm({...form,insight:e.target.value})} style={{resize:"vertical"}}/></div>
         <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 24px",fontSize:".75rem"}} onClick={add}>Share</button>
       </div>)}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading devotions...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         {devotions.map(d=>(
           <div key={d.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative"}}>
@@ -943,34 +1351,34 @@ function DevotionPanel() {
                 <span style={{fontWeight:600}}>{d.name}</span>
                 {d.book&&<span style={{marginLeft:10,padding:"2px 10px",background:"rgba(123,79,207,.1)",border:"1px solid rgba(123,79,207,.3)",color:"#B07BE0",fontSize:".75rem"}}>📖 {d.book}</span>}
               </div>
-              <div style={{color:"#9A9080",fontSize:".8rem"}}>{d.date}</div>
+              <div style={{color:"#9A9080",fontSize:".8rem"}}>{new Date(d.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</div>
             </div>
             <p style={{color:"#B0A898",lineHeight:1.8,fontStyle:"italic",marginBottom:12}}>"{d.insight}"</p>
-            <button onClick={()=>setDevotions(devotions.map(x=>x.id===d.id?{...x,likes:x.likes+1}:x))} style={{background:"none",border:"none",color:"#C9A84C",cursor:"pointer",fontSize:".85rem"}}>🙏 Amen ({d.likes})</button>
+            <button onClick={()=>like(d.id,d.likes)} style={{background:"none",border:"none",color:"#C9A84C",cursor:"pointer",fontSize:".85rem"}}>🙏 Amen ({d.likes})</button>
           </div>
         ))}
-      </div>
+        {devotions.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No devotions yet. Be the first to share!</div>}
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
     </div>
   );
 }
 
 function GivingHistoryPanel() {
-  const [records,setRecords]=useState([
-    {id:1,type:"Tithe",amount:500,date:"Feb 1"},
-    {id:2,type:"Offering",amount:200,date:"Feb 8"},
-    {id:3,type:"Tithe",amount:500,date:"Mar 1"},
-  ]);
+  const [records,setRecords]=useState([]);
   const [giving,setGiving]=useState(false);
   const [form,setForm]=useState({type:"Tithe",amount:"",note:""});
   const [ok,setOk]=useState(false);
-  const submit=()=>{
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{dbGet("finance_records","?order=created_at.desc").then(d=>{if(d)setRecords(d);setLoading(false);});},[]);
+  const submit=async()=>{
     if(!form.amount)return;
-    const d=new Date().toLocaleString("en-PH",{month:"short",day:"numeric"});
-    setRecords([...records,{id:Date.now(),type:form.type,amount:Number(form.amount),date:d}]);
-    addLog("💸","Member submitted a "+form.type+" offering \u2014 \u20b1"+form.amount,"Member","Member");
+    const r=await dbInsert("finance_records",{name:"Member",type:form.type,amount:Number(form.amount),date:new Date().toLocaleDateString("en-PH",{month:"short",day:"numeric"}),status:"Pending"});
+    if(r&&r[0]){setRecords([r[0],...records]);addLog("💸","Member submitted a "+form.type+" offering — ₱"+form.amount,"Member","Member");}
     setForm({type:"Tithe",amount:"",note:""});setOk(true);
     setTimeout(()=>{setOk(false);setGiving(false);},2500);
   };
+  const total=records.reduce((s,r)=>s+Number(r.amount),0);
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -994,8 +1402,8 @@ function GivingHistoryPanel() {
               <div><label>Note (Optional)</label><input placeholder="e.g. For Easter Sunday" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
             </div>
             <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,marginBottom:20,fontSize:".85rem",color:"#9A9080",lineHeight:1.9}}>
-              📱 <span style={{color:"#C9A84C"}}>GCash:</span> JRS Church Fund · 09XX-XXX-XXXX<br/>
-              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JRS JTROS Mission · XXXX-XXXX-XXXX<br/>
+              📱 <span style={{color:"#C9A84C"}}>GCash:</span> D2 Church Fund · 09XX-XXX-XXXX<br/>
+              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> D2 JTROS Mission · XXXX-XXXX-XXXX<br/>
               <span style={{fontSize:".8rem"}}>Please send payment before confirming.</span>
             </div>
             <button className="btnGold" style={{padding:"12px 28px"}} onClick={submit}>Confirm Offering →</button>
@@ -1003,472 +1411,54 @@ function GivingHistoryPanel() {
         )}
       </div>)}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:16,marginBottom:32}}>
-        {[{l:"Total Given",v:`₱${records.reduce((s,r)=>s+r.amount,0).toLocaleString()}`,c:"#7BE0B0"},{l:"Total Records",v:records.length,c:"#7B9EF0"},{l:"Last Giving",v:records[records.length-1]?.date||"—",c:"#C9A84C"}].map(s=>(
+        {[{l:"Total Given",v:`₱${total.toLocaleString()}`,c:"#7BE0B0"},{l:"Total Records",v:records.length,c:"#7B9EF0"},{l:"Last Giving",v:records[0]?new Date(records[0].created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"—",c:"#C9A84C"}].map(s=>(
           <div key={s.l} style={{background:"#1A1A28",padding:"20px 24px",borderLeft:`3px solid ${s.c}`}}>
             <div style={{fontSize:".75rem",color:s.c,marginBottom:4,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em"}}>{s.l}</div>
             <div className="font-display" style={{fontSize:"1.4rem",color:s.c}}>{s.v}</div>
           </div>
         ))}
       </div>
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading...</div>:(
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr style={{borderBottom:"1px solid #22223A"}}>{["Type","Amount","Date"].map(h=><th key={h} className="font-sans" style={{padding:"10px 16px",textAlign:"left",fontSize:".7rem",letterSpacing:".1em",color:"#9A9080",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
           <tbody>{records.map(r=>(
-            <tr key={r.id} style={{borderBottom:"1px solid #1A1A28"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A28"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <tr key={r.id} style={{borderBottom:"1px solid #1A1A28"}}>
               <td style={{padding:"12px 16px",color:"#9A9080"}}>{r.type}</td>
-              <td style={{padding:"12px 16px",color:"#7BE0B0",fontWeight:600}}>₱{r.amount.toLocaleString()}</td>
-              <td style={{padding:"12px 16px",color:"#9A9080",fontSize:".85rem"}}>{r.date}</td>
+              <td style={{padding:"12px 16px",color:"#7BE0B0",fontWeight:600}}>₱{Number(r.amount).toLocaleString()}</td>
+              <td style={{padding:"12px 16px",color:"#9A9080",fontSize:".85rem"}}>{r.date||new Date(r.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</td>
             </tr>
           ))}</tbody>
         </table>
-      </div>
+        {records.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No giving records yet.</div>}
+      </div>)}
     </div>
   );
 }
 
-function ProfilePanel({user, onUpdateUser}) {
-  const [editing, setEditing] = useState(false);
-  const [info, setInfo] = useState({
-    fullName:   user.fullName   || user.username,
-    username:   user.username,
-    contact:    user.contact    || "—",
-    address:    user.address    || "—",
-    birthday:   user.birthday   || "—",
-    joinedDate: user.joinedDate || "—",
-    bio:        user.bio        || "—",
-  });
-  const [photo, setPhoto]       = useState(user.photo || null);
-  const [saved, setSaved]       = useState(false);
-  const [pwMode, setPwMode]     = useState(false);
-  const [pwForm, setPwForm]     = useState({current:"", newPw:"", confirm:""});
-  const [pwErr, setPwErr]       = useState("");
-  const [pwOk, setPwOk]         = useState(false);
-
-  const handlePhoto = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPhoto(ev.target.result);
-    reader.readAsDataURL(file);
-  };
-
-  const save = () => {
-    if (!info.username.trim()) return;
-    setSaved(true);
-    setEditing(false);
-    // bubble up new username + photo so nav chip updates too
-    if (onUpdateUser) onUpdateUser({ username: info.username.trim(), photo, fullName: info.fullName });
-    setTimeout(() => setSaved(false), 2500);
-  };
-
-  const changePassword = () => {
-    setPwErr("");
-    if (pwForm.current !== user.password) { setPwErr("Current password is incorrect."); return; }
-    if (pwForm.newPw.length < 6)          { setPwErr("New password must be at least 6 characters."); return; }
-    if (pwForm.newPw !== pwForm.confirm)   { setPwErr("Passwords do not match."); return; }
-    setPwOk(true);
-    setPwMode(false);
-    setPwForm({current:"",newPw:"",confirm:""});
-    setTimeout(() => setPwOk(false), 2500);
-  };
-
-  const Field = ({label, field}) => (
-    <div style={{borderBottom:"1px solid #22223A",paddingBottom:12,marginBottom:12}}>
-      <div className="font-sans" style={{fontSize:".7rem",color:"#9A9080",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
-      {editing
-        ? <input value={info[field]} onChange={e=>setInfo({...info,[field]:e.target.value})} style={{padding:"8px 12px",fontSize:".95rem"}}/>
-        : <div style={{color:"#F0EAD6",fontSize:"1rem"}}>{info[field]}</div>}
-    </div>
-  );
-
-  return (
-    <div style={{maxWidth:580}}>
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
-        <h4 className="font-display" style={{color:"#E8CC7A"}}>👤 My Profile</h4>
-        <div style={{display:"flex",gap:10}}>
-          {editing ? (
-            <>
-              <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={save}>Save Changes</button>
-              <button className="btnOut"  style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(false)}>Cancel</button>
-            </>
-          ) : (
-            <button className="btnOut" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(true)}>✏️ Edit Profile</button>
-          )}
-        </div>
-      </div>
-
-      {/* Success alerts */}
-      {saved && <div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:16,fontSize:".9rem"}}>✅ Profile updated successfully!</div>}
-      {pwOk  && <div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:16,fontSize:".9rem"}}>🔒 Password changed successfully!</div>}
-
-      {/* Avatar + basic info */}
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:32,position:"relative",marginBottom:16}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${user.color},transparent)`}}/>
-
-        <div style={{display:"flex",alignItems:"center",gap:20,marginBottom:28,flexWrap:"wrap"}}>
-          {/* Profile picture */}
-          <div style={{position:"relative",flexShrink:0}}>
-            <div style={{width:90,height:90,borderRadius:"50%",overflow:"hidden",border:`2px solid ${user.color}80`,background:`radial-gradient(circle,${user.color}30,transparent)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:44}}>
-              {photo
-                ? <img src={photo} alt="profile" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                : user.icon}
-            </div>
-            {/* Camera button */}
-            <label htmlFor="photoUpload" style={{position:"absolute",bottom:0,right:0,width:26,height:26,borderRadius:"50%",background:"#C9A84C",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13,border:"2px solid #0A0A0F"}}>
-              📷
-            </label>
-            <input id="photoUpload" type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
-          </div>
-
-          <div style={{flex:1,minWidth:0}}>
-            {editing ? (
-              <div style={{marginBottom:10}}>
-                <div className="font-sans" style={{fontSize:".7rem",color:"#9A9080",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>Display Name</div>
-                <input value={info.fullName} onChange={e=>setInfo({...info,fullName:e.target.value})} style={{padding:"8px 12px",fontSize:"1rem",marginBottom:8}}/>
-              </div>
-            ) : (
-              <h3 className="font-display" style={{fontSize:"1.1rem",marginBottom:8}}>{info.fullName}</h3>
-            )}
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-              <span style={{padding:"3px 12px",background:`${user.color}20`,border:`1px solid ${user.color}50`,color:user.color,fontSize:".75rem",fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".1em",textTransform:"uppercase"}}>{user.label}</span>
-              <span style={{padding:"3px 12px",background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",color:"#7BE0B0",fontSize:".75rem",fontFamily:"'Tenor Sans',sans-serif"}}>● Active</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Username field (editable) */}
-        <div style={{borderBottom:"1px solid #22223A",paddingBottom:12,marginBottom:12}}>
-          <div className="font-sans" style={{fontSize:".7rem",color:"#9A9080",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>Username</div>
-          {editing
-            ? <input value={info.username} onChange={e=>setInfo({...info,username:e.target.value})} style={{padding:"8px 12px",fontSize:".95rem"}}/>
-            : <div style={{color:user.color,fontSize:"1rem",fontWeight:600}}>@{info.username}</div>}
-        </div>
-
-        <Field label="Contact No." field="contact"/>
-        <Field label="Address"     field="address"/>
-        <Field label="Birthday"    field="birthday"/>
-        <Field label="Date Joined" field="joinedDate"/>
-
-        <div>
-          <div className="font-sans" style={{fontSize:".7rem",color:"#9A9080",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>About / Bio</div>
-          {editing
-            ? <textarea rows={3} value={info.bio} onChange={e=>setInfo({...info,bio:e.target.value})} style={{resize:"vertical"}}/>
-            : <div style={{color:"#B0A898",lineHeight:1.8,fontSize:"1rem",fontStyle:"italic"}}>"{info.bio}"</div>}
-        </div>
-      </div>
-
-      {/* Church info */}
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative",marginBottom:16}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
-        <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:12,textTransform:"uppercase"}}>Church Info</div>
-        <div style={{color:"#B0A898",lineHeight:2,fontSize:".95rem"}}>
-          <div>Church: <span style={{color:"#C9A84C"}}>Jesus The Rock of Our Salvation Mission Church</span></div>
-          <div>Username: <span style={{color:user.color}}>@{info.username}</span></div>
-          <div>Member Since: <span style={{color:"#F0EAD6"}}>{info.joinedDate}</span></div>
-        </div>
-      </div>
-
-      {/* Change password */}
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative"}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#E07B7B,transparent)"}}/>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom: pwMode?20:0}}>
-          <div className="font-sans" style={{fontSize:".7rem",color:"#E07B7B",letterSpacing:".1em",textTransform:"uppercase"}}>🔒 Change Password</div>
-          <button className="btnOut" style={{padding:"6px 16px",fontSize:".7rem",borderColor:"#E07B7B",color:"#E07B7B"}} onClick={()=>{setPwMode(!pwMode);setPwErr("");}}>
-            {pwMode?"Cancel":"Change"}
-          </button>
-        </div>
-        {pwMode && (
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {pwErr && <div style={{background:"rgba(224,123,123,.1)",border:"1px solid rgba(224,123,123,.3)",padding:"10px 14px",color:"#E07B7B",fontSize:".85rem"}}>⚠️ {pwErr}</div>}
-            <div><label>Current Password</label><input type="password" placeholder="••••••••" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})}/></div>
-            <div><label>New Password</label><input type="password" placeholder="Min. 6 characters" value={pwForm.newPw} onChange={e=>setPwForm({...pwForm,newPw:e.target.value})}/></div>
-            <div><label>Confirm New Password</label><input type="password" placeholder="Repeat new password" value={pwForm.confirm} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})}/></div>
-            <button className="btnGold" style={{padding:"10px 24px",fontSize:".75rem",alignSelf:"flex-start"}} onClick={changePassword}>Update Password</button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── EXPORT REPORTS PANEL ──────────────────────────────────────────────────────
-function ExportPanel() {
-  const [done, setDone] = useState(null);
-
-  // ── DATA ──
-  const MEMBERS_DATA = [
-    {No:1,Name:"Kuya Ivan",Role:"Head",Status:"Active",Joined:"Jan 2024"},
-    {No:2,Name:"Ange",Role:"Treasurer",Status:"Active",Joined:"Jan 2024"},
-    {No:3,Name:"Angie",Role:"Financial Dept",Status:"Active",Joined:"Jan 2024"},
-    {No:4,Name:"Ced",Role:"Events / Engagement",Status:"Active",Joined:"Feb 2024"},
-    {No:5,Name:"Precious",Role:"Performance Dept",Status:"Active",Joined:"Feb 2024"},
-    {No:6,Name:"Jam",Role:"Secretary",Status:"Active",Joined:"Mar 2024"},
-    {No:7,Name:"Pipper",Role:"Events Dept",Status:"Active",Joined:"Mar 2024"},
-    {No:8,Name:"Tine",Role:"Events / Secretary",Status:"Active",Joined:"Mar 2024"},
-    {No:9,Name:"Krislene",Role:"Performance Dept",Status:"Active",Joined:"Apr 2024"},
-    {No:10,Name:"Ariane",Role:"Financial Dept",Status:"Active",Joined:"Apr 2024"},
-  ];
-  const FINANCE_DATA = [
-    {Name:"Kuya Ivan",Type:"Tithe",Amount:"₱500",Date:"Mar 1",Status:"Verified"},
-    {Name:"Ange",Type:"Offering",Amount:"₱200",Date:"Mar 1",Status:"Verified"},
-    {Name:"Angie",Type:"Tithe",Amount:"₱300",Date:"Mar 2",Status:"Pending"},
-    {Name:"Ced",Type:"Mission Fund",Amount:"₱150",Date:"Mar 2",Status:"Verified"},
-    {Name:"Precious",Type:"Offering",Amount:"₱100",Date:"Mar 3",Status:"Pending"},
-  ];
-  const ATTENDANCE_DATA = [
-    {Date:"Mar 2 (Sunday)","Members Present":"Kuya Ivan, Ange, Ced, Jam, Precious",Count:5,Total:10,Rate:"50%"},
-  ];
-  const EVENTS_DATA = EVENTS.map(e=>({Date:e.date,Title:e.title,Time:e.time,Type:e.type}));
-
-  // ── EXCEL (real .xlsx via SheetJS) ──
-  const downloadExcel = async (reportKey, sheetName, data, summary) => {
-    // dynamically load SheetJS
-    if (!window.XLSX) {
-      await new Promise((res, rej) => {
-        const s = document.createElement("script");
-        s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    }
-    const XLSX = window.XLSX;
-    const wb = XLSX.utils.book_new();
-
-    // Summary sheet
-    const sumRows = [
-      ["Jesus The Rock of Our Salvation Mission Church"],
-      [`${sheetName} — Generated: ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}`],
-      [],
-      ...summary.map(s => [s.label, String(s.value)]),
-      [],
-    ];
-    const sumWS = XLSX.utils.aoa_to_sheet(sumRows);
-    XLSX.utils.book_append_sheet(wb, sumWS, "Summary");
-
-    // Data sheet
-    const dataWS = XLSX.utils.json_to_sheet(data);
-    // auto column width
-    const cols = Object.keys(data[0]).map(k => ({wch: Math.max(k.length, ...data.map(r=>String(r[k]||"").length)) + 2}));
-    dataWS["!cols"] = cols;
-    XLSX.utils.book_append_sheet(wb, dataWS, sheetName);
-
-    XLSX.writeFile(wb, `D2_${reportKey}_${new Date().getFullYear()}.xlsx`);
-    setDone(reportKey+"_excel");
-    setTimeout(()=>setDone(null), 2000);
-  };
-
-  // ── PDF (blob URL → new tab → auto print) ──
-  const downloadPDF = (reportKey, title, headers, rows, summary) => {
-    const tableRows = rows.map(row =>
-      `<tr>${Object.values(row).map(v=>`<td>${v}</td>`).join("")}</tr>`
-    ).join("");
-    const sumCards = summary.map(s =>
-      `<div class="sc"><div class="sl">${s.label}</div><div class="sv">${s.value}</div></div>`
-    ).join("");
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
-    <style>
-      *{box-sizing:border-box;margin:0;padding:0;}
-      body{font-family:Georgia,serif;background:#fff;color:#111;padding:36px 44px;}
-      .top{text-align:center;border-bottom:3px double #C9A84C;padding-bottom:18px;margin-bottom:22px;}
-      .church{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#8A6A2A;margin-bottom:6px;}
-      .cross{font-size:22px;color:#C9A84C;margin-bottom:6px;}
-      h1{font-size:20px;font-weight:bold;margin-bottom:4px;}
-      .date{font-size:11px;color:#777;}
-      .sums{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;}
-      .sc{border:1px solid #C9A84C;padding:10px 16px;min-width:110px;}
-      .sl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#8A6A2A;margin-bottom:3px;}
-      .sv{font-size:17px;font-weight:bold;color:#C9A84C;}
-      table{width:100%;border-collapse:collapse;font-size:11.5px;}
-      thead tr{background:#1a1a2e;}
-      th{color:#C9A84C;padding:9px 11px;text-align:left;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;font-family:Arial,sans-serif;}
-      td{padding:8px 11px;border-bottom:1px solid #eee;color:#222;vertical-align:top;}
-      tr:nth-child(even) td{background:#fafaf5;}
-      .foot{margin-top:28px;text-align:center;font-size:9px;color:#aaa;border-top:1px solid #ddd;padding-top:10px;}
-      @page{margin:16mm 14mm;}
-      @media print{body{padding:0;}}
-    </style></head><body>
-    <div class="top">
-      <div class="cross">✞</div>
-      <div class="church">Jesus The Rock of Our Salvation Mission Church</div>
-      <h1>${title}</h1>
-      <div class="date">Generated: ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</div>
-    </div>
-    <div class="sums">${sumCards}</div>
-    <table>
-      <thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
-      <tbody>${tableRows}</tbody>
-    </table>
-    <div class="foot">JTROS Mission Church &nbsp;·&nbsp; Confidential Report &nbsp;·&nbsp; ${new Date().getFullYear()}</div>
-    <script>window.onload=()=>{window.print();}<\/script>
-    </body></html>`;
-
-    const blob = new Blob([html], {type:"text/html"});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href = url; a.target = "_blank"; a.rel = "noopener";
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url), 5000);
-    setDone(reportKey+"_pdf");
-    setTimeout(()=>setDone(null), 2000);
-  };
-
-  const reports = [
-    {
-      key:"members", icon:"👥", title:"Member Records", color:"#7BE0B0",
-      desc:"Full list of all church members with roles and status.",
-      summary:[
-        {label:"Total Members", value:MEMBERS_DATA.length},
-        {label:"Active",        value:MEMBERS_DATA.filter(m=>m.Status==="Active").length},
-        {label:"Inactive",      value:MEMBERS_DATA.filter(m=>m.Status==="Inactive").length},
-      ],
-      data: MEMBERS_DATA,
-      pdfHeaders: Object.keys(MEMBERS_DATA[0]),
-      pdfRows: MEMBERS_DATA,
-    },
-    {
-      key:"finance", icon:"💰", title:"Finance Report", color:"#C9A84C",
-      desc:"Monthly offerings, tithes, and contribution records.",
-      summary:[
-        {label:"Verified Total", value:`₱${[500,200,150].reduce((a,b)=>a+b,0).toLocaleString()}`},
-        {label:"Pending Total",  value:`₱${[300,100].reduce((a,b)=>a+b,0).toLocaleString()}`},
-        {label:"Total Records",  value:FINANCE_DATA.length},
-      ],
-      data: FINANCE_DATA,
-      pdfHeaders: Object.keys(FINANCE_DATA[0]),
-      pdfRows: FINANCE_DATA,
-    },
-    {
-      key:"attendance", icon:"✅", title:"Attendance Report", color:"#7B9EF0",
-      desc:"Attendance logs per session with attendance rate.",
-      summary:[
-        {label:"Sessions", value:ATTENDANCE_DATA.length},
-        {label:"Last Session", value:ATTENDANCE_DATA[0]?.Date||"—"},
-      ],
-      data: ATTENDANCE_DATA,
-      pdfHeaders: Object.keys(ATTENDANCE_DATA[0]),
-      pdfRows: ATTENDANCE_DATA,
-    },
-    {
-      key:"events", icon:"🗓", title:"Events Report", color:"#E07B7B",
-      desc:"All upcoming and scheduled church events.",
-      summary:[
-        {label:"Total Events", value:EVENTS_DATA.length},
-      ],
-      data: EVENTS_DATA,
-      pdfHeaders: Object.keys(EVENTS_DATA[0]),
-      pdfRows: EVENTS_DATA,
-    },
-  ];
-
-  const Btn = ({onClick, color, bg, icon, label, loading}) => (
-    <button onClick={onClick}
-      style={{display:"flex",alignItems:"center",gap:8,padding:"11px 20px",
-        background:loading?`${bg}`:bg, border:`1px solid ${color}`,
-        color, cursor:"pointer", fontFamily:"'Tenor Sans',sans-serif",
-        fontSize:".75rem", letterSpacing:".08em", textTransform:"uppercase",
-        transition:"all .25s", opacity:loading?.7:1, whiteSpace:"nowrap"}}
-      onMouseEnter={e=>{e.currentTarget.style.background=color;e.currentTarget.style.color="#0A0A0F";}}
-      onMouseLeave={e=>{e.currentTarget.style.background=bg;e.currentTarget.style.color=color;}}>
-      <span style={{fontSize:15}}>{loading?"⏳":icon}</span>
-      {loading ? "Generating..." : label}
-    </button>
-  );
-
-  return (
-    <div>
-      <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:8}}>📊 Export Reports</h4>
-      <p style={{color:"#9A9080",marginBottom:28,fontSize:".95rem"}}>Download church records as a real Excel file or a printable PDF.</p>
-
-      <div style={{display:"flex",flexDirection:"column",gap:20}}>
-        {reports.map(r=>(
-          <div key={r.key} style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,position:"relative"}}>
-            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${r.color},transparent)`}}/>
-
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16,marginBottom:20}}>
-              <div style={{display:"flex",gap:14,alignItems:"center"}}>
-                <div style={{width:48,height:48,background:`${r.color}15`,border:`1px solid ${r.color}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>
-                  {r.icon}
-                </div>
-                <div>
-                  <div style={{fontWeight:700,fontSize:"1.05rem",marginBottom:3}}>{r.title}</div>
-                  <div style={{color:"#9A9080",fontSize:".85rem"}}>{r.desc}</div>
-                </div>
-              </div>
-
-              <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-                {/* Excel button */}
-                <Btn
-                  onClick={()=>downloadExcel(r.key, r.title, r.data, r.summary)}
-                  color="#7BE0B0" bg="rgba(123,224,176,.1)"
-                  icon="📊" label="Excel (.xlsx)"
-                  loading={done===r.key+"_excel_loading"}
-                />
-                {/* PDF button */}
-                <Btn
-                  onClick={()=>downloadPDF(r.key, r.title, r.pdfHeaders, r.pdfRows, r.summary)}
-                  color="#E07B7B" bg="rgba(224,123,123,.1)"
-                  icon="📄" label="PDF (Print)"
-                  loading={done===r.key+"_pdf_loading"}
-                />
-                {/* Success flash */}
-                {(done===r.key+"_excel"||done===r.key+"_pdf") && (
-                  <span style={{color:"#7BE0B0",fontSize:".85rem",animation:"fadeUp .3s ease"}}>
-                    ✅ {done===r.key+"_excel"?"Excel downloaded!":"PDF opened!"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Summary cards */}
-            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-              {r.summary.map(s=>(
-                <div key={s.label} style={{padding:"10px 16px",background:"#12121A",border:`1px solid ${r.color}30`}}>
-                  <div style={{fontSize:".68rem",color:r.color,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".08em",textTransform:"uppercase",marginBottom:2}}>{s.label}</div>
-                  <div className="font-display" style={{fontSize:"1.15rem",color:r.color}}>{s.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{marginTop:20,background:"#1A1A28",border:"1px solid #22223A",padding:"14px 20px",fontSize:".85rem",color:"#9A9080",borderLeft:"3px solid #C9A84C",lineHeight:1.9}}>
-        📊 <strong style={{color:"#7BE0B0"}}>Excel (.xlsx)</strong> — bubukas sa Microsoft Excel o Google Sheets, may Summary at Data sheet.<br/>
-        📄 <strong style={{color:"#E07B7B"}}>PDF (Print)</strong> — mag-o-open ng print dialog. Piliin ang <em style={{color:"#F0EAD6"}}>"Save as PDF"</em> sa printer options para mag-save.
-      </div>
-    </div>
-  );
-}
-
-
-
-// ── REHEARSAL SCHEDULE PANEL ─────────────────────────────────────────────────
-function RehearsalPanel() {
-  const [schedules, setSchedules] = useState([
-    {id:1, title:"Sunday Worship Rehearsal", date:"Mar 8 (Sat)", time:"3:00 PM", venue:"Main Hall", members:["Precious","Krislene"], status:"Confirmed"},
-    {id:2, title:"Easter Special Rehearsal", date:"Mar 22 (Sat)", time:"4:00 PM", venue:"Main Hall", members:["Precious","Krislene"], status:"Confirmed"},
-    {id:3, title:"Monthly Praise Night Prep", date:"Mar 29 (Sat)", time:"3:00 PM", venue:"Chapel", members:["Precious","Krislene"], status:"Tentative"},
-  ]);
+function RehearsalPanel({viewOnly=false}) {
+  const [schedules, setSchedules] = useState([]);
+  const [confirmId, setConfirmId] = useState(null);
   const [form, setForm] = useState({title:"",date:"",time:"",venue:"",status:"Confirmed"});
   const [adding, setAdding] = useState(false);
-  const add = () => {
+  const [loading, setLoading] = useState(true);
+  useEffect(()=>{dbGet("rehearsals","?order=created_at.desc").then(d=>{setSchedules(d||[]);setLoading(false);});},[]);
+  const add = async () => {
     if(!form.title||!form.date) return;
-    setSchedules([...schedules,{id:Date.now(),...form,members:["Performance Dept"]}]);
-    addLog("🎭","Rehearsal scheduled: \""+form.title+"\" on "+form.date,"Performance","Performance Dept");
+    const r = await dbInsert("rehearsals", form);
+    if(r&&r[0]){setSchedules([r[0],...schedules]);addLog("🎭","Rehearsal scheduled: \""+form.title+"\" on "+form.date,"Performance","Performance Dept");}
     setForm({title:"",date:"",time:"",venue:"",status:"Confirmed"});
     setAdding(false);
   };
+  const remove = async(id)=>{await dbDelete("rehearsals",id);setSchedules(schedules.filter(x=>x.id!==id));};
   const statusColor = (s) => s==="Confirmed" ? "#7BE0B0" : s==="Tentative" ? "#E0B07B" : "#E07B7B";
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <h4 className="font-display" style={{color:"#E8CC7A"}}>🎭 Rehearsal Schedule</h4>
-        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Schedule"}</button>
+        {!viewOnly&&<button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Add Schedule"}</button>}
       </div>
-      {adding && (
+      {!viewOnly&&adding && (
         <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
           <div><label>Title</label><input placeholder="Rehearsal name" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
           <div><label>Date</label><input placeholder="Mar 15 (Sat)" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
@@ -1484,6 +1474,7 @@ function RehearsalPanel() {
           </div>
         </div>
       )}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading schedules...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         {schedules.map(s=>(
           <div key={s.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative"}}>
@@ -1499,50 +1490,63 @@ function RehearsalPanel() {
                   <span>🕐 {s.time}</span>
                   {s.venue && <span>📍 {s.venue}</span>}
                 </div>
-                {s.members?.length > 0 && (
-                  <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {s.members.map(m=>(
-                      <span key={m} style={{padding:"2px 10px",background:"rgba(176,123,224,.1)",border:"1px solid rgba(176,123,224,.3)",color:"#B07BE0",fontSize:".75rem"}}>{m}</span>
-                    ))}
-                  </div>
-                )}
               </div>
-              <button onClick={()=>setSchedules(schedules.filter(x=>x.id!==s.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem",flexShrink:0}}>Remove</button>
+              {!viewOnly&&<button onClick={()=>setConfirmId(s.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem",flexShrink:0}}>Remove</button>}
             </div>
           </div>
         ))}
-      </div>
+        {schedules.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No rehearsals scheduled yet.</div>}
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
     </div>
   );
 }
 
 // ── PRACTICE MATERIALS PANEL ─────────────────────────────────────────────────
-function PracticePanel() {
-  const [materials, setMaterials] = useState([
-    {id:1, title:"Easter Sunday Song Set", type:"Song List", file:"easter_songs.pdf", uploadedBy:"Precious", date:"Mar 1", notes:"3 songs — include harmony parts"},
-    {id:2, title:"Worship Chords — March", type:"Chords Sheet", file:"march_chords.pdf", uploadedBy:"Precious", date:"Mar 2", notes:"Updated chord sheets for all worship songs"},
-    {id:3, title:"Performance Blocking Script", type:"Script", file:"blocking.docx", uploadedBy:"Krislene", date:"Mar 3", notes:"Stage positions for Easter presentation"},
-    {id:4, title:"Vocal Warm-Up Guide", type:"Guide", file:"warmup.pdf", uploadedBy:"Precious", date:"Mar 3", notes:"Use before every rehearsal"},
-  ]);
-  const [form, setForm] = useState({title:"",type:"Song List",file:"",notes:""});
+function PracticePanel({viewOnly=false}) {
+  const [materials, setMaterials] = useState([]);
+  const [confirmId, setConfirmId] = useState(null);
+  const [form, setForm] = useState({title:"",type:"Song List",notes:""});
+  const [file, setFile] = useState(null);
+  const [fileData, setFileData] = useState(null);
   const [adding, setAdding] = useState(false);
-  const add = () => {
-    if(!form.title) return;
-    setMaterials([...materials,{id:Date.now(),...form,uploadedBy:"Performance Dept",date:"Mar "+new Date().getDate()}]);
-    addLog("📚","Practice material uploaded: \""+form.title+"\" ("+form.type+")","Performance","Performance Dept");
-    setForm({title:"",type:"Song List",file:"",notes:""});
-    setAdding(false);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(()=>{dbGet("practice_materials","?order=created_at.desc").then(d=>{setMaterials(d||[]);setLoading(false);});},[]);
+
+  const handleFile = (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    setFile(f);
+    if(!form.title) setForm(prev=>({...prev,title:f.name}));
+    const reader = new FileReader();
+    reader.onload = (ev) => setFileData(ev.target.result);
+    reader.readAsDataURL(f);
   };
+
+  const add = async () => {
+    if(!form.title) return;
+    setUploading(true);
+    const payload = {...form, uploaded_by:"Performance Dept", ...(fileData?{file_url:fileData, file:file?.name}:{})};
+    const r = await dbInsert("practice_materials", payload);
+    if(r&&r[0]){setMaterials([r[0],...materials]);addLog("📚","Practice material: \""+form.title+"\" ("+form.type+")","Performance","Performance Dept");}
+    setForm({title:"",type:"Song List",notes:""});
+    setFile(null);setFileData(null);setAdding(false);setUploading(false);
+  };
+
+  const remove = async(id)=>{await dbDelete("practice_materials",id);setMaterials(materials.filter(x=>x.id!==id));};
   const typeIcon = (t) => t==="Song List"?"🎵":t==="Chords Sheet"?"🎸":t==="Script"?"📋":t==="Guide"?"📖":"📄";
   const typeColor = (t) => t==="Song List"?"#B07BE0":t==="Chords Sheet"?"#7BE0B0":t==="Script"?"#E0B07B":t==="Guide"?"#7B9EF0":"#C9A84C";
+
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <h4 className="font-display" style={{color:"#E8CC7A"}}>📚 Practice Materials</h4>
-        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Upload Material"}</button>
+        {!viewOnly&&<button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Upload Material"}</button>}
       </div>
-      {adding && (
-        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:12}}>
+      {!viewOnly&&adding && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:14}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
             <div><label>Title</label><input placeholder="Material title" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
             <div><label>Type</label>
@@ -1550,18 +1554,31 @@ function PracticePanel() {
                 {["Song List","Chords Sheet","Script","Guide","Video Link","Other"].map(t=><option key={t}>{t}</option>)}
               </select>
             </div>
-            <div><label>File / Link Name</label><input placeholder="filename.pdf" value={form.file} onChange={e=>setForm({...form,file:e.target.value})}/></div>
           </div>
           <div><label>Notes</label><input placeholder="Additional notes..." value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
-          <div style={{border:"2px dashed #22223A",padding:24,textAlign:"center",color:"#9A9080",fontSize:".9rem",cursor:"pointer"}}>
-            📎 Click to attach file
-          </div>
-          <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 24px",fontSize:".75rem"}} onClick={add}>Save Material</button>
+          {/* File Upload */}
+          <label style={{display:"block",cursor:"pointer"}}>
+            <div style={{border:"2px dashed "+(file?"#B07BE0":"#22223A"),padding:28,textAlign:"center",color:file?"#E8CC7A":"#9A9080",fontSize:".9rem",background:file?"rgba(176,123,224,.05)":"transparent",transition:"all .2s"}}
+              onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#B07BE0";}}
+              onDragLeave={e=>{e.currentTarget.style.borderColor=file?"#B07BE0":"#22223A";}}
+              onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f){handleFile({target:{files:[f]}});}}}>
+              {file
+                ? <><div style={{fontSize:28,marginBottom:6}}>📎</div><div style={{fontWeight:600}}>{file.name}</div><div style={{fontSize:".8rem",marginTop:4,color:"#9A9080"}}>{(file.size/1024).toFixed(1)} KB · Click to change</div></>
+                : <><div style={{fontSize:28,marginBottom:6}}>📂</div><div>Click to attach file or drag & drop</div><div style={{fontSize:".8rem",marginTop:4}}>PDF, DOC, MP3, MP4, JPG supported</div></>}
+            </div>
+            <input type="file" accept=".pdf,.doc,.docx,.mp3,.mp4,.jpg,.jpeg,.png,.txt,.pptx" onChange={handleFile} style={{display:"none"}}/>
+          </label>
+          <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 24px",fontSize:".75rem"}} onClick={add} disabled={uploading}>
+            {uploading?"Saving...":"Save Material"}
+          </button>
         </div>
       )}
+      {loading?<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>Loading materials...</div>:(
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {materials.map(m=>(
-          <div key={m.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+          <div key={m.id} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,transition:"all .2s"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="#22223A";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(176,123,224,.1)";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="#1A1A28";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
             <div style={{display:"flex",gap:14,alignItems:"flex-start",flex:1}}>
               <div style={{width:44,height:44,background:`${typeColor(m.type)}15`,border:`1px solid ${typeColor(m.type)}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{typeIcon(m.type)}</div>
               <div style={{flex:1}}>
@@ -1569,45 +1586,84 @@ function PracticePanel() {
                   <div style={{fontWeight:700,fontSize:".95rem"}}>{m.title}</div>
                   <span style={{padding:"2px 8px",background:`${typeColor(m.type)}15`,border:`1px solid ${typeColor(m.type)}40`,color:typeColor(m.type),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>{m.type}</span>
                 </div>
-                {m.file && <div style={{color:"#C9A84C",fontSize:".85rem",marginBottom:4}}>📄 {m.file}</div>}
-                {m.notes && <div style={{color:"#9A9080",fontSize:".85rem",marginBottom:4}}>{m.notes}</div>}
-                <div style={{color:"#9A9080",fontSize:".8rem"}}>Uploaded {m.date} by {m.uploadedBy}</div>
+                {m.file&&<div style={{color:"#C9A84C",fontSize:".85rem",marginBottom:4}}>📎 {m.file}</div>}
+                {m.notes&&<div style={{color:"#9A9080",fontSize:".85rem",marginBottom:4}}>{m.notes}</div>}
+                <div style={{color:"#9A9080",fontSize:".8rem"}}>Uploaded {new Date(m.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})} by {m.uploaded_by}</div>
               </div>
             </div>
-            <div style={{display:"flex",gap:12,flexShrink:0}}>
-              <button style={{background:"none",border:"none",color:"#C9A84C",cursor:"pointer",fontSize:".85rem"}}>⬇ Download</button>
-              <button onClick={()=>setMaterials(materials.filter(x=>x.id!==m.id))} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button>
+            <div style={{display:"flex",gap:12,alignItems:"center",flexShrink:0}}>
+              {m.file_url&&<a href={m.file_url} download={m.file||m.title} style={{color:"#B07BE0",fontSize:".8rem",textDecoration:"none",fontFamily:"'Tenor Sans',sans-serif"}}>⬇ Download</a>}
+              {!viewOnly&&<button onClick={()=>setConfirmId(m.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".85rem"}}>Remove</button>}
             </div>
           </div>
         ))}
-      </div>
+        {materials.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No practice materials yet. Click "+ Upload Material" to add one.</div>}
+      </div>)}
+      {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
     </div>
+
+
   );
 }
-
-// ── DASHBOARD OVERVIEW PANEL ─────────────────────────────────────────────────
 function DashboardOverviewPanel() {
-  const [prayers, setPrayers] = useState(window.__prayerRequests || []);
-  const [logs, setLogs] = useState(window.__activityLog || []);
-  const [tab, setTab] = useState("log"); // "log" | "prayers"
-  const [refresh, setRefresh] = useState(0);
+  const [prayers, setPrayers] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [tab, setTab] = useState("log");
+  const [stats, setStats] = useState({members:0, activeMembers:0, verifiedTotal:0, pendingTotal:0, events:0, nextEvent:"—", attendance:"—", attendanceDate:"—", songs:0, prayers:0, pubPrayers:0, confPrayers:0});
 
-  // Poll for new data every 3 seconds (simulates real-time)
-  useEffect(() => {
-    const t = setInterval(() => {
-      setPrayers([...(window.__prayerRequests||[])]);
-      setLogs([...(window.__activityLog||[])]);
-    }, 3000);
-    return () => clearInterval(t);
-  }, []);
+  const fetchData = async () => {
+    const [members, finance, events, attendance, songs, prayerData, logData] = await Promise.all([
+      dbGet("members","?order=created_at.asc"),
+      dbGet("finance_records","?order=created_at.desc"),
+      dbGet("events","?order=created_at.asc"),
+      dbGet("attendance","?order=created_at.desc&limit=1"),
+      dbGet("songs","?order=created_at.asc"),
+      dbGet("prayer_requests","?order=created_at.desc"),
+      dbGet("activity_log","?order=created_at.desc&limit=30"),
+    ]);
+    const mList = members||[];
+    const fList = finance||[];
+    const eList = events||[];
+    const aList = attendance||[];
+    const sList = songs||[];
+    const pList = prayerData||[];
+    if(logData) setLogs(logData);
+    if(pList) setPrayers(pList);
+    const verified = fList.filter(r=>r.status==="Verified").reduce((s,r)=>s+Number(r.amount),0);
+    const pending = fList.filter(r=>r.status==="Pending").reduce((s,r)=>s+Number(r.amount),0);
+    const lastAtt = aList[0];
+    const nextEv = eList[0];
+    setStats({
+      members: mList.length,
+      activeMembers: mList.filter(m=>m.status==="Active").length,
+      verifiedTotal: verified,
+      pendingTotal: pending,
+      events: eList.length,
+      nextEvent: nextEv ? (nextEv.date||"Soon") : "None yet",
+      attendance: lastAtt ? `${lastAtt.present}/${lastAtt.total}` : "—",
+      attendanceDate: lastAtt ? lastAtt.date : "No record",
+      songs: sList.length,
+      prayers: pList.length,
+      pubPrayers: pList.filter(p=>!p.conf).length,
+      confPrayers: pList.filter(p=>p.conf).length,
+    });
+  };
 
-  const stats = [
-    {icon:"👥", label:"Total Members",    value:"10",     color:"#7BE0B0", sub:"Active this month"},
-    {icon:"💰", label:"March Offerings",  value:"₱1,250", color:"#C9A84C", sub:"Verified: ₱850"},
-    {icon:"🗓", label:"Upcoming Events",  value:"6",      color:"#E07B7B", sub:"Next: Mar 9 Sunday"},
-    {icon:"🙏", label:"Prayer Requests",  value:prayers.length, color:"#B07BE0", sub:`${prayers.filter(p=>!p.conf).length} public · ${prayers.filter(p=>p.conf).length} confidential`},
-    {icon:"✅", label:"Last Attendance",  value:"5/10",   color:"#7B9EF0", sub:"Mar 2 Sunday Service"},
-    {icon:"🎵", label:"Active Ministries",value:"6",      color:"#E0B07B", sub:"All departments active"},
+  useEffect(()=>{
+    fetchData();
+    const t = setInterval(fetchData, 5000);
+    const onPrayerUpdate = () => fetchData();
+    window.addEventListener("prayerUpdate", onPrayerUpdate);
+    return ()=>{ clearInterval(t); window.removeEventListener("prayerUpdate", onPrayerUpdate); };
+  },[]);
+
+  const statCards = [
+    {icon:"👥", label:"Total Members",    value:stats.members,                       color:"#B07BE0", sub:`${stats.activeMembers} active`},
+    {icon:"💰", label:"March Offerings",  value:`₱${stats.verifiedTotal.toLocaleString()}`, color:"#C9A84C", sub:`Pending: ₱${stats.pendingTotal.toLocaleString()}`},
+    {icon:"🗓", label:"Upcoming Events",  value:stats.events,                        color:"#E07B7B", sub:`Next: ${stats.nextEvent}`},
+    {icon:"🙏", label:"Prayer Requests",  value:stats.prayers,                       color:"#7B9EF0", sub:`${stats.pubPrayers} public · ${stats.confPrayers} confidential`},
+    {icon:"✅", label:"Last Attendance",  value:stats.attendance,                    color:"#7BE0B0", sub:stats.attendanceDate},
+    {icon:"🎵", label:"Songs in List",    value:stats.songs,                         color:"#E0B07B", sub:"Performance Dept"},
   ];
 
   const roleColor = (r) =>
@@ -1619,9 +1675,8 @@ function DashboardOverviewPanel() {
       <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:8}}>📊 Dashboard Overview</h4>
       <p style={{color:"#9A9080",marginBottom:28,fontSize:".95rem"}}>Church summary at a glance — March 2026.</p>
 
-      {/* Stats */}
       <div className="g3" style={{marginBottom:32}}>
-        {stats.map(s=>(
+        {statCards.map(s=>(
           <div key={s.label} style={{background:"#1A1A28",border:"1px solid #22223A",padding:"22px 24px",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${s.color},transparent)`}}/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -1636,20 +1691,18 @@ function DashboardOverviewPanel() {
         ))}
       </div>
 
-      {/* Tab switcher */}
       <div style={{display:"flex",gap:0,marginBottom:0,borderBottom:"1px solid #22223A"}}>
         {[["log","📋 Activity Log"],["prayers","🙏 Prayer Requests"]].map(([k,lbl])=>(
           <button key={k} onClick={()=>setTab(k)}
             style={{padding:"12px 24px",background:"none",border:"none",borderBottom:tab===k?"2px solid #C9A84C":"2px solid transparent",color:tab===k?"#E8CC7A":"#9A9080",cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".8rem",letterSpacing:".08em",transition:"all .2s",marginBottom:"-1px"}}>
             {lbl}
             {k==="prayers" && prayers.length > 0 && (
-              <span style={{marginLeft:8,background:"#B07BE0",color:"#fff",borderRadius:"50%",width:18,height:18,fontSize:".65rem",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{prayers.length}</span>
+              <span className="aPulse" style={{marginLeft:8,background:"#B07BE0",color:"#fff",borderRadius:"50%",width:20,height:20,fontSize:".65rem",display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{prayers.length}</span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Activity Log Tab */}
       {tab==="log" && (
         <div style={{background:"#1A1A28",border:"1px solid #22223A",borderTop:"none",padding:28,position:"relative"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -1663,25 +1716,25 @@ function DashboardOverviewPanel() {
                 <div style={{flex:1}}>
                   <div style={{fontSize:".9rem",color:"#F0EAD6",marginBottom:3}}>{r.msg}</div>
                   <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
-                    {r.user && r.user !== r.role && <span style={{padding:"1px 8px",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.14)",color:"#E8CC7A",fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>👤 {r.user}</span>}
+                    {r.username && <span style={{padding:"1px 8px",background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.14)",color:"#E8CC7A",fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>👤 {r.username}</span>}
                     <span style={{padding:"1px 8px",background:`${roleColor(r.role)}15`,border:`1px solid ${roleColor(r.role)}40`,color:roleColor(r.role),fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>{r.role}</span>
                   </div>
                 </div>
-                <div style={{fontSize:".78rem",color:"#9A9080",flexShrink:0,textAlign:"right"}}>{r.time}</div>
+                <div style={{fontSize:".78rem",color:"#9A9080",flexShrink:0,textAlign:"right"}}>{r.created_at ? new Date(r.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}</div>
               </div>
             ))}
+            {logs.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:24}}>No activity yet.</div>}
           </div>
         </div>
       )}
 
-      {/* Prayer Requests Tab */}
       {tab==="prayers" && (
         <div style={{background:"#1A1A28",border:"1px solid #22223A",borderTop:"none",padding:28}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
             <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".12em",color:"#B07BE0",textTransform:"uppercase"}}>All Prayer Requests</div>
             <span style={{fontSize:".8rem",color:"#9A9080"}}>{prayers.length} total</span>
           </div>
-          {prayers.length === 0 && <div style={{textAlign:"center",padding:"32px 0",color:"#9A9080"}}>No prayer requests yet.</div>}
+          {prayers.length===0 && <div style={{textAlign:"center",padding:"32px 0",color:"#9A9080"}}>No prayer requests yet.</div>}
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             {prayers.map((p,i)=>(
               <div key={p.id||i} style={{background:"#12121A",border:`1px solid ${p.conf?"rgba(176,123,224,.3)":"#22223A"}`,padding:"16px 20px",position:"relative"}}>
@@ -1691,11 +1744,11 @@ function DashboardOverviewPanel() {
                     <span style={{fontWeight:700,color:p.conf?"#B07BE0":"#E8CC7A"}}>{p.name}</span>
                     {p.conf && <span style={{padding:"2px 8px",background:"rgba(176,123,224,.1)",border:"1px solid rgba(176,123,224,.4)",color:"#B07BE0",fontSize:".7rem",fontFamily:"'Tenor Sans',sans-serif"}}>🔒 Confidential</span>}
                   </div>
-                  <span style={{fontSize:".8rem",color:"#9A9080"}}>{p.date} · {p.time}</span>
+                  <span style={{fontSize:".8rem",color:"#9A9080"}}>{p.created_at ? new Date(p.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}</span>
                 </div>
                 <div style={{color:"#B0A898",fontSize:".95rem",lineHeight:1.7}}>{p.req}</div>
                 <div style={{display:"flex",gap:12,marginTop:12}}>
-                  <button onClick={()=>{window.__prayerRequests=(window.__prayerRequests||[]).filter(x=>x.id!==p.id);setPrayers([...window.__prayerRequests]);}} style={{background:"none",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",cursor:"pointer",padding:"4px 12px",fontSize:".75rem",fontFamily:"'Tenor Sans',sans-serif"}}>✓ Mark Prayed</button>
+                  <button onClick={async()=>{await dbDelete("prayer_requests",p.id);setPrayers(prayers.filter(x=>x.id!==p.id));}} style={{background:"none",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",cursor:"pointer",padding:"4px 12px",fontSize:".75rem",fontFamily:"'Tenor Sans',sans-serif"}}>✓ Mark Prayed</button>
                 </div>
               </div>
             ))}
@@ -1706,10 +1759,157 @@ function DashboardOverviewPanel() {
   );
 }
 
+// ── EXPORT REPORTS PANEL ─────────────────────────────────────────────────────
+function ExportPanel() {
+  const [data, setData] = useState({members:[],finance:[],attendance:[],events:[],budgets:[]});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(()=>{
+    Promise.all([
+      dbGet("members","?order=created_at.asc"),
+      dbGet("finance_records","?order=created_at.desc"),
+      dbGet("attendance","?order=created_at.desc"),
+      dbGet("events","?order=created_at.asc"),
+      dbGet("documents","?order=created_at.desc"),
+    ]).then(([m,f,a,e,d])=>{
+      const budgets = (d||[]).filter(x=>x.type==="Budget").map(x=>{
+        try{ const p=JSON.parse(x.name||"{}"); return{...x,...p}; }catch{return x;}
+      });
+      setData({members:m||[],finance:f||[],attendance:a||[],events:e||[],budgets});
+      setLoading(false);
+    });
+  },[]);
+
+  const toCSV = (rows, cols) => {
+    const header = cols.map(c=>c.label).join(",");
+    const body = rows.map(r=>cols.map(c=>`"${(r[c.key]||"").toString().replace(/"/g,'""')}"`).join(",")).join("\n");
+    return header+"\n"+body;
+  };
+
+  const downloadCSV = (csv, filename) => {
+    const blob = new Blob([csv], {type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download=filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printTable = (title, rows, cols) => {
+    const html = `<html><head><title>${title}</title><style>
+      body{font-family:Arial,sans-serif;padding:24px;color:#222}
+      h2{color:#333;margin-bottom:4px}p{color:#666;margin-bottom:16px;font-size:13px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th{background:#222;color:#fff;padding:10px 12px;text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+      td{padding:9px 12px;border-bottom:1px solid #eee}tr:nth-child(even) td{background:#f9f9f9}
+      .footer{margin-top:24px;font-size:11px;color:#999}
+    </style></head><body>
+      <h2>${title}</h2><p>D2 Jesus The Rock of Our Salvation Mission Church · Generated ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</p>
+      <table><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${r[c.key]||"—"}</td>`).join("")}</tr>`).join("")}</tbody></table>
+      <div class="footer">Total records: ${rows.length}</div>
+    </body></html>`;
+    const w = window.open("","_blank"); w.document.write(html); w.document.close(); w.print();
+  };
+
+  const active = data.members.filter(m=>m.status==="Active").length;
+  const inactive = data.members.length - active;
+  const verified = data.finance.filter(r=>r.status==="Verified").reduce((s,r)=>s+Number(r.amount),0);
+  const pending = data.finance.filter(r=>r.status==="Pending").reduce((s,r)=>s+Number(r.amount),0);
+  const lastAtt = data.attendance[0];
+
+  const reports = [
+    {
+      icon:"👥", title:"Member Records", color:"#B07BE0",
+      desc:"Full list of all church members with roles and status.",
+      stats:[{l:"TOTAL MEMBERS",v:data.members.length},{l:"ACTIVE",v:active},{l:"INACTIVE",v:inactive}],
+      cols:[{key:"name",label:"Name"},{key:"role",label:"Role"},{key:"status",label:"Status"},{key:"joined",label:"Joined"}],
+      rows:data.members, file:"members_report.csv", printTitle:"Member Records",
+    },
+    {
+      icon:"💰", title:"Finance Report", color:"#C9A84C",
+      desc:"Monthly offerings, tithes, and contribution records.",
+      stats:[{l:"VERIFIED TOTAL",v:`₱${verified.toLocaleString()}`},{l:"PENDING TOTAL",v:`₱${pending.toLocaleString()}`},{l:"TOTAL RECORDS",v:data.finance.length}],
+      cols:[{key:"name",label:"Name"},{key:"type",label:"Type"},{key:"amount",label:"Amount (₱)"},{key:"date",label:"Date"},{key:"status",label:"Status"}],
+      rows:data.finance, file:"finance_report.csv", printTitle:"Finance Report",
+    },
+    {
+      icon:"✅", title:"Attendance Report", color:"#7BE0B0",
+      desc:"Attendance logs per session with attendance rate.",
+      stats:[{l:"SESSIONS",v:data.attendance.length},{l:"LAST SESSION",v:lastAtt?lastAtt.date:"—"}],
+      cols:[{key:"date",label:"Date"},{key:"present",label:"Present"},{key:"total",label:"Total"}],
+      rows:data.attendance, file:"attendance_report.csv", printTitle:"Attendance Report",
+    },
+    {
+      icon:"🗓", title:"Events Report", color:"#E07B7B",
+      desc:"All upcoming and scheduled church events.",
+      stats:[{l:"TOTAL EVENTS",v:data.events.length}],
+      cols:[{key:"date",label:"Date"},{key:"title",label:"Event"},{key:"time",label:"Time"},{key:"type",label:"Type"}],
+      rows:data.events, file:"events_report.csv", printTitle:"Events Report",
+    },
+    {
+      icon:"📋", title:"Monthly Budget", color:"#7B9EF0",
+      desc:"Budget allocations, spending, and remaining balance.",
+      stats:[
+        {l:"TOTAL ALLOCATED",v:`₱${data.budgets.reduce((s,b)=>s+Number(b.allocated||0),0).toLocaleString()}`},
+        {l:"TOTAL SPENT",v:`₱${data.budgets.reduce((s,b)=>s+Number(b.spent||0),0).toLocaleString()}`},
+        {l:"CATEGORIES",v:data.budgets.length},
+      ],
+      cols:[{key:"category",label:"Category"},{key:"allocated",label:"Allocated (₱)"},{key:"spent",label:"Spent (₱)"},{key:"note",label:"Note"}],
+      rows:data.budgets, file:"budget_report.csv", printTitle:"Monthly Budget",
+    },
+  ];
+
+  return (
+    <div>
+      <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:8}}>📤 Export Reports</h4>
+      <p style={{color:"#9A9080",marginBottom:28}}>Download church records as a real Excel file or a printable PDF.</p>
+      {loading ? <div style={{color:"#9A9080",padding:32,textAlign:"center"}}>Loading data...</div> : (
+      <div style={{display:"flex",flexDirection:"column",gap:20}}>
+        {reports.map(r=>(
+          <div key={r.title} style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${r.color},transparent)`}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16,marginBottom:16}}>
+              <div style={{display:"flex",gap:16,alignItems:"center"}}>
+                <div style={{width:44,height:44,background:`${r.color}15`,border:`1px solid ${r.color}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{r.icon}</div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:"1rem",marginBottom:4}}>{r.title}</div>
+                  <div style={{color:"#9A9080",fontSize:".85rem"}}>{r.desc}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10,flexShrink:0}}>
+                <button onClick={()=>downloadCSV(toCSV(r.rows,r.cols),r.file)}
+                  style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.4)",color:"#7BE0B0",cursor:"pointer",padding:"8px 16px",fontSize:".75rem",fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".06em",display:"flex",alignItems:"center",gap:6}}>
+                  📊 EXCEL (.CSV)
+                </button>
+                <button onClick={()=>printTable(r.printTitle,r.rows,r.cols)}
+                  style={{background:"rgba(224,123,123,.1)",border:"1px solid rgba(224,123,123,.4)",color:"#E07B7B",cursor:"pointer",padding:"8px 16px",fontSize:".75rem",fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".06em",display:"flex",alignItems:"center",gap:6}}>
+                  🖨 PDF (PRINT)
+                </button>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+              {r.stats.map(s=>(
+                <div key={s.l} style={{background:"#12121A",border:`1px solid ${r.color}30`,padding:"10px 20px",minWidth:100}}>
+                  <div style={{fontSize:".65rem",color:r.color,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".1em",marginBottom:4}}>{s.l}</div>
+                  <div className="font-display" style={{fontSize:"1.3rem",color:r.color}}>{s.v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,fontSize:".82rem",color:"#9A9080",lineHeight:2}}>
+          <div>📊 <span style={{color:"#7BE0B0"}}>Excel (.csv)</span> — Buksan sa Microsoft Excel o Google Sheets. May Summary at Data sheet.</div>
+          <div>🖨 <span style={{color:"#E07B7B"}}>PDF (Print)</span> — mag-o-open ng print dialog. Piliin ang <strong style={{color:"#F0EAD6"}}>"Save as PDF"</strong> sa printer options para ma-save.</div>
+        </div>
+      </div>
+      )}
+    </div>
+  );
+}
 // ── SYSTEM SETTINGS PANEL ────────────────────────────────────────────────────
 function SystemSettingsPanel({user, onUpdateUser}) {
+  const [tab, setTab] = useState("general");
   const [settings, setSettings] = useState({
-    churchName: "Jesus The Rock of Our Salvation Mission Church",
+    churchName: "D2 Jesus The Rock of Our Salvation Mission Church",
     tagline:    "He only is my rock and my salvation — Psalm 62:6",
     gcash:      "09XX-XXX-XXXX",
     bank:       "XXXX-XXXX-XXXX",
@@ -1722,7 +1922,22 @@ function SystemSettingsPanel({user, onUpdateUser}) {
   });
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [contentSaved, setContentSaved] = useState(false);
+
+  // Page Content State
+  const [pageContent, setPageContent] = useState({
+    home:       { hero: "Welcome to D2 Jesus The Rock of Our Salvation", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
+    about:      { title: "About Our Church", body: "D2 Jesus The Rock of Our Salvation Mission Church is a growing community of believers dedicated to spreading the Gospel and nurturing disciples of Christ.", vision: "To be a church that reflects the love and grace of Jesus Christ.", mission: "To make disciples of all nations through worship, fellowship, and service." },
+    ministries: { intro: "We have various ministries designed to help every member grow in faith and serve the community." },
+    events:     { intro: "Join us for our upcoming events and gatherings. Everyone is welcome!" },
+    media:      { intro: "Watch our latest sermons and worship sessions. Be blessed wherever you are." },
+    give:       { intro: "Your generous giving helps us continue the ministry and reach more lives for Christ.", note: "All donations are used for church operations, outreach, and community service." },
+    prayer:     { intro: "We believe in the power of prayer. Submit your prayer requests and our team will pray for you.", note: "All prayer requests are kept confidential unless you choose to share publicly." },
+  });
+
   const save = () => { setSaved(true); setEditing(false); setTimeout(()=>setSaved(false), 2500); };
+  const saveContent = () => { setContentSaved(true); setTimeout(()=>setContentSaved(false), 2500); };
+
   const Field = ({label, field}) => (
     <div style={{marginBottom:16}}>
       <label>{label}</label>
@@ -1743,55 +1958,380 @@ function SystemSettingsPanel({user, onUpdateUser}) {
       </div>
     </div>
   );
+
+  const pageIcons = {home:"🏠",about:"⛪",ministries:"🙏",events:"🎉",media:"🎬",give:"💝",prayer:"🕊️"};
+  const pageLabels = {home:"Home",about:"About",ministries:"Ministries",events:"Events",media:"Media",give:"Give",prayer:"Prayer"};
+  const [activePage, setActivePage] = useState("home");
+
+  const ContentField = ({label, pageKey, fieldKey, multiline=false}) => (
+    <div style={{marginBottom:14}}>
+      <label style={{fontSize:".75rem"}}>{label}</label>
+      {multiline
+        ? <textarea rows={3} value={pageContent[pageKey][fieldKey]||""} onChange={e=>setPageContent({...pageContent,[pageKey]:{...pageContent[pageKey],[fieldKey]:e.target.value}})} style={{resize:"vertical"}}/>
+        : <input value={pageContent[pageKey][fieldKey]||""} onChange={e=>setPageContent({...pageContent,[pageKey]:{...pageContent[pageKey],[fieldKey]:e.target.value}})}/>}
+    </div>
+  );
+
+  const pageFields = {
+    home:       [["Hero Title","hero"],["Subtitle","sub"],["Bible Verse","verse"],["CTA Button Text","cta"]],
+    about:      [["Page Title","title"],["Description","body",true],["Vision","vision",true],["Mission","mission",true]],
+    ministries: [["Intro Text","intro",true]],
+    events:     [["Intro Text","intro",true]],
+    media:      [["Intro Text","intro",true]],
+    give:       [["Intro Text","intro",true],["Additional Note","note",true]],
+    prayer:     [["Intro Text","intro",true],["Confidentiality Note","note",true]],
+  };
+
+  const TABS = [["general","⚙️ General"],["content","📝 Page Content"],["roles","🔐 Role Access"]];
+
   return (
-    <div style={{maxWidth:640}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
-        <h4 className="font-display" style={{color:"#E8CC7A"}}>⚙️ System Settings</h4>
-        <div style={{display:"flex",gap:10}}>
-          {editing ? (
-            <>
-              <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={save}>Save Changes</button>
-              <button className="btnOut"  style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(false)}>Cancel</button>
-            </>
-          ) : (
-            <button className="btnOut" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(true)}>✏️ Edit Settings</button>
-          )}
+    <div>
+      <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:24}}>⚙️ System Settings</h4>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:0,borderBottom:"1px solid #22223A",marginBottom:28,overflowX:"auto"}}>
+        {TABS.map(([k,lbl])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{padding:"12px 22px",background:"none",border:"none",borderBottom:tab===k?"2px solid #C9A84C":"2px solid transparent",color:tab===k?"#E8CC7A":"#9A9080",cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".8rem",letterSpacing:".08em",whiteSpace:"nowrap",transition:"all .2s",marginBottom:"-1px"}}>{lbl}</button>
+        ))}
+      </div>
+
+      {/* General Tab */}
+      {tab==="general" && (
+        <div style={{maxWidth:640}}>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginBottom:20}}>
+            {editing ? (
+              <>
+                <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={save}>Save Changes</button>
+                <button className="btnOut" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(false)}>Cancel</button>
+              </>
+            ) : (
+              <button className="btnOut" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(true)}>✏️ Edit Settings</button>
+            )}
+          </div>
+          {saved && <div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:20,fontSize:".9rem"}}>✅ Settings saved!</div>}
+          <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,marginBottom:16,position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
+            <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>⛪ Church Information</div>
+            <Field label="Church Name" field="churchName"/>
+            <Field label="Tagline / Verse" field="tagline"/>
+            <Field label="Location" field="location"/>
+          </div>
+          <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,marginBottom:16,position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#7B9EF0,transparent)"}}/>
+            <div className="font-sans" style={{fontSize:".7rem",color:"#7B9EF0",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>🕐 Service Schedule</div>
+            <Field label="Sunday Worship Time" field="sunday"/>
+            <Field label="Midweek Prayer Time" field="midweek"/>
+          </div>
+          <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,marginBottom:16,position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#7BE0B0,transparent)"}}/>
+            <div className="font-sans" style={{fontSize:".7rem",color:"#7BE0B0",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>💳 Payment Details</div>
+            <Field label="GCash Number" field="gcash"/>
+            <Field label="Bank Name" field="bankName"/>
+            <Field label="Bank Account No." field="bank"/>
+          </div>
+          <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#E07B7B,transparent)"}}/>
+            <div className="font-sans" style={{fontSize:".7rem",color:"#E07B7B",letterSpacing:".1em",marginBottom:8,textTransform:"uppercase"}}>🔧 System Controls</div>
+            <Toggle label="Allow New Signups" field="allowSignup" desc="Allow new members to register accounts."/>
+            <Toggle label="Maintenance Mode" field="maintenanceMode" desc="Temporarily disable public access."/>
+          </div>
+        </div>
+      )}
+
+      {/* Page Content Tab */}
+      {tab==="content" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
+            <div style={{color:"#9A9080",fontSize:".85rem"}}>Edit the text content shown on each public page.</div>
+            <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={saveContent}>💾 Save Content</button>
+          </div>
+          {contentSaved&&<div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:20,fontSize:".9rem"}}>✅ Content saved!</div>}
+          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+            {/* Page selector sidebar */}
+            <div style={{display:"flex",flexDirection:"column",gap:6,minWidth:140}}>
+              {Object.keys(pageFields).map(pg=>(
+                <button key={pg} onClick={()=>setActivePage(pg)}
+                  style={{padding:"10px 16px",background:activePage===pg?"rgba(201,168,76,.12)":"transparent",border:activePage===pg?"1px solid rgba(201,168,76,.4)":"1px solid transparent",color:activePage===pg?"#E8CC7A":"#9A9080",cursor:"pointer",textAlign:"left",fontFamily:"'Tenor Sans',sans-serif",fontSize:".8rem",letterSpacing:".06em",transition:"all .2s"}}>
+                  {pageIcons[pg]} {pageLabels[pg]}
+                </button>
+              ))}
+            </div>
+            {/* Fields for selected page */}
+            <div style={{flex:1,background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative",minWidth:260}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
+              <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:20,textTransform:"uppercase"}}>{pageIcons[activePage]} {pageLabels[activePage]} Page</div>
+              {(pageFields[activePage]||[]).map(([lbl,fld,multi])=>(
+                <ContentField key={fld} label={lbl} pageKey={activePage} fieldKey={fld} multiline={!!multi}/>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Access Tab */}
+      {tab==="roles" && <RoleAccessManager/>}
+    </div>
+  );
+}
+
+function RoleAccessManager() {
+  const ALL_PANELS = [
+    "Dashboard Overview","Manage Members","Manage Events","Upcoming Events",
+    "Donation Records","Financial Reports","Monthly Budget","Export Reports",
+    "Post Announcements","Attendance Logs","System Settings",
+    "Member Records","Upload Documents","Song List","Rehearsal Schedule",
+    "Practice Materials","Attendance Monitoring","Visitor Follow-up","Member List",
+    "My Profile","Devotion Submission","View Events","Giving History",
+  ];
+  const ROLES = ["head","treasurer","financial","events","performance","secretary","engagement","member"];
+  const [roleAccess, setRoleAccess] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(null);
+  const [saved, setSaved] = useState(null);
+  const [openRole, setOpenRole] = useState(null);
+
+  useEffect(()=>{
+    dbGet("role_access","?order=role.asc").then(d=>{
+      if(d&&d.length>0){
+        const map = {};
+        d.forEach(row=>{
+          try{ map[row.role] = typeof row.panels==="string" ? JSON.parse(row.panels) : (row.panels||[]); }catch{ map[row.role]=[]; }
+        });
+        setRoleAccess(map);
+      } else {
+        // Initialize from hardcoded fallback
+        setRoleAccess({...ROLE_ACCESS});
+      }
+      setLoading(false);
+    });
+  },[]);
+
+  const toggle = (role, panel) => {
+    const cur = roleAccess[role]||[];
+    const updated = cur.includes(panel) ? cur.filter(p=>p!==panel) : [...cur, panel];
+    setRoleAccess({...roleAccess, [role]: updated});
+  };
+
+  const saveRole = async (role) => {
+    setSaving(role);
+    const panels = JSON.stringify(roleAccess[role]||[]);
+    // Try update first, then insert
+    const existing = await dbGet("role_access","?role=eq."+role);
+    if(existing&&existing.length>0){
+      await dbUpdate("role_access", existing[0].id, {panels});
+    } else {
+      await dbInsert("role_access", {role, panels});
+    }
+    setSaving(null); setSaved(role);
+    setTimeout(()=>setSaved(null),2000);
+  };
+
+  const roleLabel = r=>r==="head"?"👑 Head":r==="treasurer"?"💰 Treasurer":r==="financial"?"💵 Financial":r==="events"?"🎉 Events":r==="performance"?"🎶 Performance":r==="secretary"?"📝 Secretary":r==="engagement"?"🤝 Engagement":"👤 Member";
+
+  return (
+    <div style={{marginTop:32}}>
+      <div className="font-sans" style={{fontSize:".7rem",color:"#7B9EF0",letterSpacing:".1em",marginBottom:12,textTransform:"uppercase"}}>🔐 Role Access Manager</div>
+      {loading ? <div style={{color:"#9A9080",padding:16}}>Loading...</div> : (
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {ROLES.map(role=>(
+            <div key={role} style={{background:"#12121A",border:"1px solid #22223A"}}>
+              <div onClick={()=>setOpenRole(openRole===role?null:role)}
+                style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",cursor:"pointer"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#1A1A28"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div style={{fontWeight:600}}>{roleLabel(role)}</div>
+                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                  <span style={{color:"#9A9080",fontSize:".8rem"}}>{(roleAccess[role]||[]).length} panels</span>
+                  <span style={{color:"#9A9080"}}>{openRole===role?"▲":"▼"}</span>
+                </div>
+              </div>
+              {openRole===role&&(
+                <div style={{padding:"0 18px 18px"}}>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
+                    {ALL_PANELS.map(panel=>{
+                      const active = (roleAccess[role]||[]).includes(panel);
+                      return (
+                        <div key={panel} onClick={()=>toggle(role,panel)}
+                          style={{padding:"5px 12px",fontSize:".75rem",cursor:"pointer",border:`1px solid ${active?"#C9A84C":"#22223A"}`,background:active?"rgba(201,168,76,.15)":"transparent",color:active?"#E8CC7A":"#9A9080",fontFamily:"'Tenor Sans',sans-serif",transition:"all .2s"}}>
+                          {panel}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={()=>saveRole(role)} className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}}>
+                    {saving===role?"Saving...":saved===role?"✅ Saved!":"Save Changes"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PROFILE PANEL ─────────────────────────────────────────────────────────────
+function ProfilePanel({user, onUpdateUser}) {
+  const [form, setForm] = useState({
+    fullName: user.fullName || user.username,
+    username: user.username,
+    email: user.email || "",
+    phone: user.phone || "",
+    bio: user.bio || "",
+  });
+  const [photo, setPhoto] = useState(user.photo || null);
+  const [pwForm, setPwForm] = useState({current:"", newPw:"", confirm:""});
+  const [saved, setSaved] = useState(false);
+  const [pwMsg, setPwMsg] = useState("");
+  const [tab, setTab] = useState("info");
+
+  const handlePhoto = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhoto(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const save = () => {
+    onUpdateUser({...form, photo});
+    setSaved(true);
+    addLog("👤", "Profile updated: "+form.username, user.role, form.username);
+    setTimeout(()=>setSaved(false), 2500);
+  };
+
+  const changePw = () => {
+    if (!pwForm.current) { setPwMsg("Enter your current password."); return; }
+    if (pwForm.newPw.length < 4) { setPwMsg("New password must be at least 4 characters."); return; }
+    if (pwForm.newPw !== pwForm.confirm) { setPwMsg("Passwords do not match."); return; }
+    setPwMsg("✅ Password updated successfully!");
+    setPwForm({current:"", newPw:"", confirm:""});
+    setTimeout(()=>setPwMsg(""), 3000);
+  };
+
+  return (
+    <div style={{maxWidth:560}}>
+      {/* Profile Header Card */}
+      <div style={{display:"flex",alignItems:"center",gap:20,marginBottom:28,background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative"}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${user.color||"#C9A84C"},transparent)`}}/>
+        {/* Avatar with upload */}
+        <div style={{position:"relative",flexShrink:0}}>
+          <div style={{width:80,height:80,borderRadius:"50%",background:`${user.color||"#C9A84C"}20`,border:`2px solid ${user.color||"#C9A84C"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,overflow:"hidden"}}>
+            {photo
+              ? <img src={photo} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+              : (user.icon||"👤")}
+          </div>
+          <label style={{position:"absolute",bottom:0,right:0,width:26,height:26,borderRadius:"50%",background:user.color||"#C9A84C",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13,border:"2px solid #0A0A0F"}}
+            title="Change photo">
+            📷
+            <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
+          </label>
+        </div>
+        <div>
+          <div className="font-display" style={{fontSize:"1.2rem",color:"#E8CC7A"}}>{form.fullName||user.username}</div>
+          <div style={{color:user.color||"#C9A84C",fontSize:".85rem",marginTop:2}}>{user.label||user.role}</div>
+          <div style={{color:"#9A9080",fontSize:".8rem",marginTop:2}}>@{form.username}</div>
+          <div style={{color:"#9A9080",fontSize:".75rem",marginTop:4,fontFamily:"'Tenor Sans',sans-serif"}}>Click 📷 to change photo</div>
         </div>
       </div>
-      {saved && <div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:20,fontSize:".9rem"}}>✅ Settings saved!</div>}
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,marginBottom:16,position:"relative"}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
-        <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>⛪ Church Information</div>
-        <Field label="Church Name" field="churchName"/>
-        <Field label="Tagline / Verse" field="tagline"/>
-        <Field label="Location" field="location"/>
+
+      {/* Tab Switcher */}
+      <div style={{display:"flex",borderBottom:"1px solid #22223A",marginBottom:0}}>
+        {[["info","👤 Profile Info"],["security","🔒 Security"]].map(([k,lbl])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{padding:"11px 22px",background:"none",border:"none",borderBottom:tab===k?"2px solid #C9A84C":"2px solid transparent",color:tab===k?"#E8CC7A":"#9A9080",cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".8rem",letterSpacing:".08em",marginBottom:"-1px"}}>{lbl}</button>
+        ))}
       </div>
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,marginBottom:16,position:"relative"}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#7B9EF0,transparent)"}}/>
-        <div className="font-sans" style={{fontSize:".7rem",color:"#7B9EF0",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>🕐 Service Schedule</div>
-        <Field label="Sunday Worship Time" field="sunday"/>
-        <Field label="Midweek Prayer Time" field="midweek"/>
-      </div>
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,marginBottom:16,position:"relative"}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#7BE0B0,transparent)"}}/>
-        <div className="font-sans" style={{fontSize:".7rem",color:"#7BE0B0",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>💳 Payment Details</div>
-        <Field label="GCash Number" field="gcash"/>
-        <Field label="Bank Name" field="bankName"/>
-        <Field label="Bank Account No." field="bank"/>
-      </div>
-      <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,position:"relative"}}>
-        <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#E07B7B,transparent)"}}/>
-        <div className="font-sans" style={{fontSize:".7rem",color:"#E07B7B",letterSpacing:".1em",marginBottom:8,textTransform:"uppercase"}}>🔧 System Controls</div>
-        <Toggle label="Allow New Signups"  field="allowSignup"      desc="Allow new members to register accounts."/>
-        <Toggle label="Maintenance Mode"   field="maintenanceMode"  desc="Temporarily disable public access."/>
-      </div>
+
+      {tab==="info" && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",borderTop:"none",padding:28}}>
+          {saved && <div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"10px 16px",color:"#7BE0B0",marginBottom:20,fontSize:".9rem"}}>✅ Profile saved!</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div><label>Full Name</label><input value={form.fullName} onChange={e=>setForm({...form,fullName:e.target.value})}/></div>
+            <div><label>Username</label><input value={form.username} onChange={e=>setForm({...form,username:e.target.value})}/></div>
+            <div><label>Email</label><input type="email" placeholder="your@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
+            <div><label>Phone</label><input placeholder="09XX-XXX-XXXX" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></div>
+            <div><label>Short Bio</label><textarea rows={3} placeholder="A little about you..." value={form.bio} onChange={e=>setForm({...form,bio:e.target.value})} style={{resize:"vertical"}}/></div>
+            <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 28px"}} onClick={save}>Save Changes</button>
+          </div>
+        </div>
+      )}
+
+      {tab==="security" && (
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",borderTop:"none",padding:28}}>
+          {pwMsg && <div style={{background:pwMsg.startsWith("✅")?"rgba(123,224,176,.1)":"rgba(224,123,123,.1)",border:`1px solid ${pwMsg.startsWith("✅")?"rgba(123,224,176,.3)":"rgba(224,123,123,.3)"}`,padding:"10px 16px",color:pwMsg.startsWith("✅")?"#7BE0B0":"#E07B7B",marginBottom:20,fontSize:".9rem"}}>{pwMsg}</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div><label>Current Password</label><input type="password" placeholder="••••••••" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})}/></div>
+            <div><label>New Password</label><input type="password" placeholder="Min. 4 characters" value={pwForm.newPw} onChange={e=>setPwForm({...pwForm,newPw:e.target.value})}/></div>
+            <div><label>Confirm New Password</label><input type="password" placeholder="Repeat new password" value={pwForm.confirm} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})}/></div>
+            <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 28px"}} onClick={changePw}>Update Password</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 // ── DASHBOARD — with openProfile trigger ──────────────────────────────────────
+// ── QUICK STATS (live, shown on dashboard home for Head/Treasurer) ────────────
+function QuickStats({color}) {
+  const [s, setS] = useState({members:"-",offerings:"-",events:"-",prayers:"-",attendance:"-",songs:"-"});
+  useEffect(()=>{
+    Promise.all([
+      dbGet("members","?order=created_at.asc"),
+      dbGet("finance_records","?order=created_at.desc"),
+      dbGet("events","?order=created_at.asc"),
+      dbGet("prayer_requests","?order=created_at.desc"),
+      dbGet("attendance","?order=created_at.desc&limit=1"),
+      dbGet("songs","?order=created_at.asc"),
+    ]).then(([m,f,e,p,a,sg])=>{
+      const verified = (f||[]).filter(r=>r.status==="Verified").reduce((sum,r)=>sum+Number(r.amount),0);
+      const lastAtt = (a||[])[0];
+      setS({
+        members: (m||[]).length,
+        offerings: `₱${verified.toLocaleString()}`,
+        events: (e||[]).length,
+        prayers: (p||[]).length,
+        attendance: lastAtt ? `${lastAtt.present}/${lastAtt.total}` : "—",
+        songs: (sg||[]).length,
+      });
+    });
+  },[]);
+  const cards = [
+    {l:"Total Members",    v:s.members,    i:"👥"},
+    {l:"March Offerings",  v:s.offerings,  i:"💰"},
+    {l:"Upcoming Events",  v:s.events,     i:"🗓"},
+    {l:"Prayer Requests",  v:s.prayers,    i:"🙏"},
+    {l:"Last Attendance",  v:s.attendance, i:"✅"},
+    {l:"Songs in List",    v:s.songs,      i:"🎵"},
+  ];
+  return (
+    <div className="g3" style={{marginBottom:32}}>
+      {cards.map(c=>(
+        <div key={c.l} style={{background:"#12121A",border:"1px solid #22223A",padding:"20px 24px",position:"relative"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${color},transparent)`}}/>
+          <div style={{fontSize:24,marginBottom:8}}>{c.i}</div>
+          <div className="font-display" style={{fontSize:"1.8rem",color:color}}>{c.v}</div>
+          <div style={{color:"#9A9080",fontSize:".85rem"}}>{c.l}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
-  const access = ROLE_ACCESS[user.role] || [];
+  const [access, setAccess] = useState(ROLE_ACCESS[user.role] || []);
   const [activePanel, setActivePanel] = useState(openProfileOnLoad ? "My Profile" : null);
+
+  // Load role access from Supabase (table: role_access, columns: role text, panels text[])
+  useEffect(()=>{
+    dbGet("role_access","?role=eq."+user.role).then(d=>{
+      if(d&&d.length>0&&d[0].panels){
+        try{
+          const panels = typeof d[0].panels==="string" ? JSON.parse(d[0].panels) : d[0].panels;
+          if(Array.isArray(panels)&&panels.length>0) setAccess(panels);
+        }catch(e){}
+      }
+    });
+  },[user.role]);
 
   // expose setter so nav avatar can open profile
   useEffect(() => {
@@ -1806,15 +2346,19 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
     if(n.includes("system")||n.includes("settings"))               return <SystemSettingsPanel user={user} onUpdateUser={onUpdateUser}/>;
     if(n.includes("member"))                                        return <MembersPanel/>;
     if(n.includes("export"))                                        return <ExportPanel/>;
-    if(n.includes("finance")||n.includes("donation")||n.includes("budget")||
-       n.includes("contribut")||n.includes("financial"))           return <FinancePanel/>;
-    if(n.includes("event"))                                         return <EventsPanel viewOnly={user.role==="member"}/>;
-    if(n.includes("announcement"))                                  return <AnnouncementsPanel/>;
-    if(n.includes("document"))                                      return <DocumentsPanel/>;
+    if(n.includes("donation record"))                               return <DonationRecordsPanel/>;
+    if(n.includes("financial report")||n.includes("view financial")) return <FinancialReportsPanel/>;
+    if(n.includes("monthly budget")||n.includes("budget"))          return <MonthlyBudgetPanel/>;
+    if(n.includes("finance")||n.includes("record contribut")||
+       n.includes("contribut"))                                     return <DonationRecordsPanel/>;
+    if(n.includes("upcoming"))                                       return <UpcomingEventsPanel/>;
+    if(n.includes("manage event")||n.includes("event"))              return <EventsPanel viewOnly={user.role==="member"}/>;
+    if(n.includes("announcement"))                                  return <AnnouncementsPanel canPost={["head","secretary","events"].includes(user.role)}/>;
+    if(n.includes("document"))                                      return <DocumentsPanel user={user}/>;
     if(n.includes("attendance")||n.includes("visitor")||n.includes("follow"))
                                                                     return <AttendancePanel/>;
-    if(n.includes("rehearsal")||n.includes("rehearsal schedule"))  return <RehearsalPanel/>;
-    if(n.includes("practice")||n.includes("practice materials"))    return <PracticePanel/>;
+    if(n.includes("rehearsal")||n.includes("rehearsal schedule"))  return <RehearsalPanel viewOnly={user.role!=="performance"}/>;
+    if(n.includes("practice")||n.includes("practice materials"))    return <PracticePanel viewOnly={user.role!=="performance"}/>;
     if(n.includes("song")||n.includes("worship"))                   return <SongsPanel/>;
     if(n.includes("devotion"))                                      return <DevotionPanel/>;
     if(n.includes("giving"))                                        return <GivingHistoryPanel/>;
@@ -1841,16 +2385,7 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
       ):(
         <>
           {(user.role==="head"||user.role==="treasurer")&&(
-            <div className="g3" style={{marginBottom:32}}>
-              {[{l:"Total Members",v:"10",i:"👥"},{l:"March Offerings",v:"₱1,250",i:"💰"},{l:"Upcoming Events",v:"6",i:"🗓"},{l:"Prayer Requests",v:"8",i:"🙏"},{l:"Last Sunday",v:"5/10",i:"✅"},{l:"Active Ministries",v:"6",i:"🎵"}].map(s=>(
-                <div key={s.l} style={{background:"#12121A",border:"1px solid #22223A",padding:"20px 24px",position:"relative"}}>
-                  <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${user.color},transparent)`}}/>
-                  <div style={{fontSize:24,marginBottom:8}}>{s.i}</div>
-                  <div className="font-display" style={{fontSize:"1.8rem",color:user.color}}>{s.v}</div>
-                  <div style={{color:"#9A9080",fontSize:".85rem"}}>{s.l}</div>
-                </div>
-              ))}
-            </div>
+            <QuickStats color={user.color}/>
           )}
           <div style={{background:"#12121A",border:"1px solid #22223A",padding:40,position:"relative"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${user.color},transparent)`}}/>
@@ -1873,23 +2408,6 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 // ── GLOBAL ACTIVITY LOG (in-memory, shared across components) ────────────────
-if (!window.__prayerRequests) window.__prayerRequests = [
-  {id:1, name:"Anonymous",    req:"Please pray for my family's healing.",          conf:false, date:"Mar 1", time:"9:12 AM"},
-  {id:2, name:"Kuya Ivan",    req:"Prayer for this Sunday's sermon preparation.",   conf:false, date:"Mar 2", time:"10:05 AM"},
-  {id:3, name:"Church Member",req:"Confidential prayer request.",                   conf:true,  date:"Mar 2", time:"11:30 AM"},
-  {id:4, name:"Ange",         req:"Prayer for wisdom in managing the finances.",    conf:false, date:"Mar 3", time:"8:45 AM"},
-  {id:5, name:"Anonymous",    req:"Please intercede for a sick loved one.",         conf:false, date:"Mar 3", time:"2:00 PM"},
-];
-if (!window.__activityLog) window.__activityLog = [
-  {icon:"🙏", msg:"Prayer submitted — For our church family",           role:"Member",      user:"Anonymous",  time:"Mar 3 · 10:30 AM"},
-  {icon:"💰", msg:"Recorded Tithe: Kuya Ivan — ₱500",              role:"Financial",   user:"Angie",      time:"Mar 1 · 09:15 AM"},
-  {icon:"📅", msg:"New event: Easter Sunday Special on Apr 20",         role:"Events Dept", user:"Ced",        time:"Mar 1 · 08:00 AM"},
-  {icon:"📢", msg:"Announcement posted: Holy Week Schedule",            role:"Secretary",   user:"Jam",        time:"Mar 2 · 11:00 AM"},
-  {icon:"🎵", msg:"Song added: How Great Is Our God by Chris Tomlin",   role:"Performance", user:"Precious",   time:"Mar 2 · 02:00 PM"},
-  {icon:"📄", msg:"Document uploaded: March Minutes.pdf",               role:"Secretary",   user:"Tine",       time:"Mar 2 · 03:30 PM"},
-  {icon:"🎭", msg:"Rehearsal scheduled: Sunday Worship Rehearsal",      role:"Performance", user:"Krislene",   time:"Mar 3 · 09:00 AM"},
-  {icon:"✅",    msg:"Attendance recorded — 5/10 present",                role:"Secretary",   user:"Tine",       time:"Mar 2 · 09:45 AM"},
-];
 
 export default function App() {
   const [page, setPage]       = useState("Home");
@@ -1948,7 +2466,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       <style>{style}</style>
       <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,transition:"all .3s",background:scrolled?"rgba(10,10,15,.95)":"rgba(10,10,15,.6)",backdropFilter:"blur(12px)",borderBottom:scrolled?"1px solid rgba(201,168,76,.2)":"1px solid transparent",padding:"0 32px"}}>
         <div style={{maxWidth:1200,margin:"0 auto",height:64,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -1958,7 +2476,7 @@ export default function App() {
             <div style={{fontSize:22,color:"#C9A84C"}}>✞</div>
             <div>
               <div className="font-display" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>JESUS THE ROCK</div>
-              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION</div>
+              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION · D2</div>
             </div>
           </div>
 
@@ -2059,7 +2577,7 @@ export default function App() {
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{fontSize:32,color:"#C9A84C",marginBottom:16}}>✞</div>
           <div className="font-display goldText" style={{fontSize:"1.1rem",marginBottom:8}}>Jesus The Rock of Our Salvation Mission Church</div>
-          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>· SERVING BY FAITH</div>
+          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>D2 · SERVING BY FAITH</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:24}}>
             <span style={{color:"#9A9080",fontStyle:"italic",fontSize:".95rem"}}>"He only is my rock and my salvation; he is my defence; I shall not be moved." — Psalm 62:6</span>
           </div>
@@ -2068,10 +2586,9 @@ export default function App() {
               <span key={n} className="navLink font-sans" style={{fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer",color:"#9A9080"}} onClick={()=>go(n)}>{n}</span>
             ))}
           </div>
-          {/* <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Jesus The Rock of Our Salvation Mission Church · Built with Faith</div> */}
-          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Morisoul</div>
+          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 D2 Jesus The Rock of Our Salvation Mission Church · Built with Faith</div>
         </div>
       </footer>
-    </>
+    </ErrorBoundary>
   );
 }
