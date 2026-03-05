@@ -147,7 +147,7 @@ function Home({go}) {
         <div style={{position:"relative",zIndex:2,animation:"fadeUp 1s ease forwards"}}>
           <div className="aCross" style={{width:100,height:100,margin:"0 auto 32px",background:"radial-gradient(circle,rgba(201,168,76,.2),transparent)",border:"2px solid rgba(201,168,76,.4)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>✞</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:16}}>
-            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>Est. by Faith</span>
+            <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>D2 · Est. by Faith</span>
           </div>
           <h1 className="font-display heroTitle goldText" style={{fontSize:"clamp(1.6rem,5vw,3.2rem)",lineHeight:1.3,marginBottom:12,maxWidth:700}}>
             Jesus The Rock<br/>of Our Salvation<br/>Mission Church
@@ -213,7 +213,7 @@ function Home({go}) {
       </div>
       <section>
         <div style={{maxWidth:700,margin:"0 auto",textAlign:"center"}}>
-          <Hdr eye="A Word From Our Head" title="Welcome to JRS Church"/>
+          <Hdr eye="A Word From Our Head" title="Welcome to D2 Church"/>
           <p style={{fontSize:"1.2rem",lineHeight:2,color:"#B0A898",fontStyle:"italic",marginBottom:32}}>
             "Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."
           </p>
@@ -404,7 +404,7 @@ function Give() {
     <section>
       <Hdr eye="Give & Support" title="Online Offering" sub="Bring the whole tithe into the storehouse. — Malachi 3:10"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:24,marginBottom:48}}>
-        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","JRS Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JRS JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
+        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","D2 Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","D2 JTROS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
           <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
             <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
@@ -462,34 +462,134 @@ function Prayer() {
 }
 
 function Login({onLogin}) {
+  const [mode, setMode] = useState("login");
   const [u,setU]=useState("");
   const [p,setP]=useState("");
   const [err,setErr]=useState("");
   const [shake,setShake]=useState(false);
-  const tryLogin=()=>{
-    const match=ACCOUNTS.find(a=>a.username===u.trim().toLowerCase()&&a.password===p);
-    if(match){const rd=ROLES.find(r=>r.id===match.role);onLogin({...match,...rd});}
-    else{setErr("Invalid username or password. Please try again.");setShake(true);setTimeout(()=>setShake(false),500);}
+  const [reg, setReg] = useState({fullName:"", username:"", password:"", confirm:"", contact:""});
+  const [regMsg, setRegMsg] = useState("");
+  const [regOk, setRegOk] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
+
+  const tryLogin = () => {
+    const uname = u.trim().toLowerCase();
+    // Check hardcoded accounts first (instant)
+    const match = ACCOUNTS.find(a=>a.username===uname&&a.password===p);
+    if(match){const rd=ROLES.find(r=>r.id===match.role);onLogin({...match,...rd});return;}
+    // Check Supabase member_accounts
+    dbGet("member_accounts","?username=eq."+uname).then(res=>{
+      if(res&&res.length>0&&res[0].password===p){
+        const acc=res[0];
+        const rd=ROLES.find(r=>r.id==="member");
+        onLogin({...rd, id:acc.id, username:acc.username, role:"member", fullName:acc.full_name, password:acc.password, email:acc.email||"", phone:acc.phone||"", bio:acc.bio||"", photo:acc.photo||null, label:"Member", icon:"👤", color:"#9A9080"});
+      } else {
+        setErr("Invalid username or password. Please try again.");
+        setShake(true);setTimeout(()=>setShake(false),500);
+      }
+    }).catch(()=>{
+      setErr("Invalid username or password. Please try again.");
+      setShake(true);setTimeout(()=>setShake(false),500);
+    });
   };
+
+  const tryRegister = async () => {
+    if(!reg.fullName||!reg.username||!reg.password) return setRegMsg("Please fill in all required fields.");
+    if(reg.password!==reg.confirm) return setRegMsg("Passwords do not match.");
+    if(reg.password.length<6) return setRegMsg("Password must be at least 6 characters.");
+    const uname = reg.username.trim().toLowerCase();
+    if(ACCOUNTS.find(a=>a.username===uname)) return setRegMsg("Username already taken.");
+    setRegLoading(true);
+    try {
+      // Direct fetch to see exact error
+      const url = `${SUPA_URL}/rest/v1/member_accounts`;
+      const res = await fetch(url, {
+        method:"POST",
+        headers:{
+          "apikey": SUPA_KEY,
+          "Authorization": `Bearer ${SUPA_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify({username:uname, password:reg.password, full_name:reg.fullName, role:"member"})
+      });
+      const text = await res.text();
+      console.log("member_accounts insert status:", res.status);
+      console.log("member_accounts insert response:", text);
+      if(!res.ok){
+        setRegMsg("Error: "+text);
+        setRegLoading(false);
+        return;
+      }
+      // Also add to members list
+      await dbInsert("members",{name:reg.fullName, role:"member", status:"Active", joined:new Date().toLocaleDateString("en-PH",{month:"long",year:"numeric"})});
+      setRegOk(true); setRegMsg("");
+    } catch(e){
+      console.error("Register error:", e);
+      setRegMsg("Registration failed: "+e.message);
+    }
+    setRegLoading(false);
+  };
+
+  const tabBtn = (label, active, onClick) => (
+    <button onClick={onClick} style={{flex:1,padding:"13px 0",background:"none",border:"none",borderBottom:active?"2px solid #C9A84C":"2px solid transparent",color:active?"#E8CC7A":"#9A9080",cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".85rem",letterSpacing:".1em",transition:"all .2s",marginBottom:"-1px"}}>{label}</button>
+  );
+
   return (
     <section>
-      <Hdr eye="Member Portal" title="Sign In" sub="Enter your username and password to access your dashboard."/>
-      <div style={{maxWidth:420,margin:"0 auto"}}>
-        <div className={shake?"aShake":""} style={{background:"#12121A",border:"1px solid #22223A",padding:48,position:"relative"}}>
+      <Hdr eye="Member Portal" title="Sign In" sub="Enter your credentials to access your dashboard."/>
+      <div style={{maxWidth:440,margin:"0 auto"}}>
+        <div style={{background:"#12121A",border:"1px solid #22223A",padding:"0 0 40px",position:"relative"}}>
           <TL/><Cross size={180} op={0.03} top="20px" right="-30px"/>
-          <div style={{display:"flex",flexDirection:"column",gap:20,position:"relative"}}>
-            <div><label>Username</label><input placeholder="Enter your username" value={u} onChange={e=>{setU(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&tryLogin()}/></div>
-            <div><label>Password</label><input type="password" placeholder="••••••••" value={p} onChange={e=>{setP(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&tryLogin()}/></div>
-            {err&&<div style={{background:"rgba(224,123,123,.1)",border:"1px solid rgba(224,123,123,.3)",padding:"12px 16px",color:"#E07B7B",fontSize:".9rem"}}>⚠️ {err}</div>}
-            <button className="btnGold" onClick={tryLogin}>Sign In →</button>
-            <div style={{background:"#1A1A28",padding:20,borderLeft:"3px solid #C9A84C"}}>
-              <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:10}}>📋 DEMO CREDENTIALS</div>
-              <div style={{color:"#9A9080",fontSize:".85rem",lineHeight:2}}>
-                {[["Head","ivan","head2026"],["Treasurer","ange","treasurer2026"],["Financial","angie","finance2026"],["Financial","ariane","ariane2026"],["Events","ced","events2026"],["Events","pipper","pipper2026"],["Secretary","jam","secretary2026"],["Secretary","tine","tine2026"],["Performance","precious","perf2026"],["Performance","krislene","krislene2026"],["Member","member","member2026"]].map(([role,user,pass])=>(
-                  <div key={role}><span style={{color:"#E8CC7A"}}>{role}</span>{" · "}<span style={{color:"#E8CC7A"}}>{user}</span>{" / "}<span style={{color:"#E8CC7A"}}>{pass}</span></div>
-                ))}
+          {/* Tabs */}
+          <div style={{display:"flex",borderBottom:"1px solid #22223A",marginBottom:32}}>
+            {tabBtn("🔑 SIGN IN", mode==="login", ()=>{setMode("login");setErr("");setRegMsg("");})}
+            {tabBtn("📝 REGISTER", mode==="register", ()=>{setMode("register");setErr("");setRegMsg("");})}
+          </div>
+
+          <div style={{padding:"0 40px",position:"relative"}}>
+            {/* Login Form */}
+            {mode==="login" && (
+              <div style={{display:"flex",flexDirection:"column",gap:20}}>
+                <div><label>Username</label><input className={shake?"aShake":""} placeholder="Enter your username" value={u} onChange={e=>{setU(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&tryLogin()}/></div>
+                <div><label>Password</label><input type="password" placeholder="••••••••" value={p} onChange={e=>{setP(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&tryLogin()}/></div>
+                {err&&<div style={{background:"rgba(224,123,123,.1)",border:"1px solid rgba(224,123,123,.3)",padding:"12px 16px",color:"#E07B7B",fontSize:".9rem"}}>⚠️ {err}</div>}
+                <button className="btnGold" onClick={tryLogin}>Sign In →</button>
+                <div style={{textAlign:"center",color:"#9A9080",fontSize:".85rem"}}>
+                  Don't have an account?{" "}
+                  <span onClick={()=>setMode("register")} style={{color:"#C9A84C",cursor:"pointer",textDecoration:"underline"}}>Register here</span>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Register Form */}
+            {mode==="register" && (
+              regOk ? (
+                <div style={{textAlign:"center",padding:"24px 0"}}>
+                  <div style={{fontSize:48,marginBottom:16}}>✅</div>
+                  <h4 className="font-display" style={{color:"#C9A84C",marginBottom:8}}>Registration Successful!</h4>
+                  <p style={{color:"#9A9080",lineHeight:1.7,marginBottom:24}}>Your account has been created! You can now sign in using your username and password.</p>
+                  <button className="btnOut" onClick={()=>{setMode("login");setRegOk(false);setReg({fullName:"",username:"",password:"",confirm:"",contact:""});}}>Back to Sign In</button>
+                </div>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                  <div><label>Full Name <span style={{color:"#E07B7B"}}>*</span></label><input placeholder="Juan dela Cruz" value={reg.fullName} onChange={e=>setReg({...reg,fullName:e.target.value})}/></div>
+                  <div><label>Username <span style={{color:"#E07B7B"}}>*</span></label><input placeholder="juandelacruz" value={reg.username} onChange={e=>setReg({...reg,username:e.target.value})}/></div>
+                  <div><label>Contact No.</label><input placeholder="09XX-XXX-XXXX" value={reg.contact} onChange={e=>setReg({...reg,contact:e.target.value})}/></div>
+                  <div><label>Password <span style={{color:"#E07B7B"}}>*</span></label><input type="password" placeholder="At least 6 characters" value={reg.password} onChange={e=>setReg({...reg,password:e.target.value})}/></div>
+                  <div><label>Confirm Password <span style={{color:"#E07B7B"}}>*</span></label><input type="password" placeholder="Re-enter password" value={reg.confirm} onChange={e=>setReg({...reg,confirm:e.target.value})}/></div>
+                  {regMsg&&<div style={{background:"rgba(224,123,123,.1)",border:"1px solid rgba(224,123,123,.3)",padding:"12px 16px",color:"#E07B7B",fontSize:".9rem"}}>⚠️ {regMsg}</div>}
+                  <button className="btnGold" onClick={tryRegister} disabled={regLoading}>{regLoading?"Submitting...":"Submit Registration"}</button>
+                  <div style={{textAlign:"center",color:"#9A9080",fontSize:".85rem"}}>
+                    Already have an account?{" "}
+                    <span onClick={()=>setMode("login")} style={{color:"#C9A84C",cursor:"pointer",textDecoration:"underline"}}>Sign in here</span>
+                  </div>
+                  <div style={{background:"#1A1A28",padding:14,borderLeft:"3px solid #E0B07B",fontSize:".82rem",color:"#9A9080"}}>
+                    ℹ️ New accounts are automatically assigned as <span style={{color:"#E8CC7A"}}>Member</span>.
+                  </div>
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>
@@ -1402,8 +1502,8 @@ function GivingHistoryPanel() {
               <div><label>Note (Optional)</label><input placeholder="e.g. For Easter Sunday" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
             </div>
             <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,marginBottom:20,fontSize:".85rem",color:"#9A9080",lineHeight:1.9}}>
-              📱 <span style={{color:"#C9A84C"}}>GCash:</span> JRS Church Fund · 09XX-XXX-XXXX<br/>
-              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JRS JTROS Mission · XXXX-XXXX-XXXX<br/>
+              📱 <span style={{color:"#C9A84C"}}>GCash:</span> D2 Church Fund · 09XX-XXX-XXXX<br/>
+              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> D2 JTROS Mission · XXXX-XXXX-XXXX<br/>
               <span style={{fontSize:".8rem"}}>Please send payment before confirming.</span>
             </div>
             <button className="btnGold" style={{padding:"12px 28px"}} onClick={submit}>Confirm Offering →</button>
@@ -1802,7 +1902,7 @@ function ExportPanel() {
       td{padding:9px 12px;border-bottom:1px solid #eee}tr:nth-child(even) td{background:#f9f9f9}
       .footer{margin-top:24px;font-size:11px;color:#999}
     </style></head><body>
-      <h2>${title}</h2><p>JRS Jesus The Rock of Our Salvation Mission Church · Generated ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</p>
+      <h2>${title}</h2><p>D2 Jesus The Rock of Our Salvation Mission Church · Generated ${new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</p>
       <table><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join("")}</tr></thead>
       <tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${r[c.key]||"—"}</td>`).join("")}</tr>`).join("")}</tbody></table>
       <div class="footer">Total records: ${rows.length}</div>
@@ -1909,7 +2009,7 @@ function ExportPanel() {
 function SystemSettingsPanel({user, onUpdateUser}) {
   const [tab, setTab] = useState("general");
   const [settings, setSettings] = useState({
-    churchName: "JRS Jesus The Rock of Our Salvation Mission Church",
+    churchName: "D2 Jesus The Rock of Our Salvation Mission Church",
     tagline:    "He only is my rock and my salvation — Psalm 62:6",
     gcash:      "09XX-XXX-XXXX",
     bank:       "XXXX-XXXX-XXXX",
@@ -1926,8 +2026,8 @@ function SystemSettingsPanel({user, onUpdateUser}) {
 
   // Page Content State
   const [pageContent, setPageContent] = useState({
-    home:       { hero: "Welcome to JRS Jesus The Rock of Our Salvation", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
-    about:      { title: "About Our Church", body: "JRS Jesus The Rock of Our Salvation Mission Church is a growing community of believers dedicated to spreading the Gospel and nurturing disciples of Christ.", vision: "To be a church that reflects the love and grace of Jesus Christ.", mission: "To make disciples of all nations through worship, fellowship, and service." },
+    home:       { hero: "Welcome to D2 Jesus The Rock of Our Salvation", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
+    about:      { title: "About Our Church", body: "D2 Jesus The Rock of Our Salvation Mission Church is a growing community of believers dedicated to spreading the Gospel and nurturing disciples of Christ.", vision: "To be a church that reflects the love and grace of Jesus Christ.", mission: "To make disciples of all nations through worship, fellowship, and service." },
     ministries: { intro: "We have various ministries designed to help every member grow in faith and serve the community." },
     events:     { intro: "Join us for our upcoming events and gatherings. Everyone is welcome!" },
     media:      { intro: "Watch our latest sermons and worship sessions. Be blessed wherever you are." },
@@ -2182,7 +2282,9 @@ function ProfilePanel({user, onUpdateUser}) {
   const [photo, setPhoto] = useState(user.photo || null);
   const [pwForm, setPwForm] = useState({current:"", newPw:"", confirm:""});
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
   const [tab, setTab] = useState("info");
 
   const handlePhoto = (e) => {
@@ -2193,20 +2295,59 @@ function ProfilePanel({user, onUpdateUser}) {
     reader.readAsDataURL(file);
   };
 
-  const save = () => {
+  const save = async () => {
+    setSaving(true);
+    // Update in-app state
     onUpdateUser({...form, photo});
-    setSaved(true);
+    // Save to member_accounts — find by username
+    try {
+      const existing = await dbGet("member_accounts", "?username=eq."+(user.username||"").toLowerCase());
+      if(existing && existing.length > 0) {
+        await dbUpdate("member_accounts", existing[0].id, {
+          full_name: form.fullName,
+          username: form.username.trim().toLowerCase(),
+          email: form.email,
+          phone: form.phone,
+          bio: form.bio,
+          photo: photo||null,
+        });
+      }
+      // Also update name in members table
+      const memberRec = await dbGet("members", "?name=eq."+encodeURIComponent(user.fullName||user.username));
+      if(memberRec && memberRec.length > 0) {
+        await dbUpdate("members", memberRec[0].id, {name: form.fullName});
+      }
+    } catch(e) {}
     addLog("👤", "Profile updated: "+form.username, user.role, form.username);
+    setSaving(false);
+    setSaved(true);
     setTimeout(()=>setSaved(false), 2500);
   };
 
-  const changePw = () => {
+  const changePw = async () => {
+    setPwMsg("");
     if (!pwForm.current) { setPwMsg("Enter your current password."); return; }
     if (pwForm.newPw.length < 4) { setPwMsg("New password must be at least 4 characters."); return; }
     if (pwForm.newPw !== pwForm.confirm) { setPwMsg("Passwords do not match."); return; }
-    setPwMsg("✅ Password updated successfully!");
-    setPwForm({current:"", newPw:"", confirm:""});
-    setTimeout(()=>setPwMsg(""), 3000);
+    // Verify current password against stored password
+    const storedPw = user.password || "";
+    if (storedPw && pwForm.current !== storedPw) { setPwMsg("Current password is incorrect."); return; }
+    setPwSaving(true);
+    try {
+      // Find the account by username and update password
+      const existing = await dbGet("member_accounts", "?username=eq." + (user.username||"").toLowerCase());
+      if (existing && existing.length > 0) {
+        await dbUpdate("member_accounts", existing[0].id, {password: pwForm.newPw});
+      }
+      // Always update in-app state
+      onUpdateUser({password: pwForm.newPw});
+      setPwMsg("✅ Password updated successfully!");
+      setPwForm({current:"", newPw:"", confirm:""});
+      setTimeout(()=>setPwMsg(""), 3000);
+    } catch(e) {
+      setPwMsg("Failed to update. Please try again.");
+    }
+    setPwSaving(false);
   };
 
   return (
@@ -2251,7 +2392,7 @@ function ProfilePanel({user, onUpdateUser}) {
             <div><label>Email</label><input type="email" placeholder="your@email.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div>
             <div><label>Phone</label><input placeholder="09XX-XXX-XXXX" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></div>
             <div><label>Short Bio</label><textarea rows={3} placeholder="A little about you..." value={form.bio} onChange={e=>setForm({...form,bio:e.target.value})} style={{resize:"vertical"}}/></div>
-            <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 28px"}} onClick={save}>Save Changes</button>
+            <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 28px"}} onClick={save} disabled={saving}>{saving?"Saving...":"Save Changes"}</button>
           </div>
         </div>
       )}
@@ -2263,7 +2404,7 @@ function ProfilePanel({user, onUpdateUser}) {
             <div><label>Current Password</label><input type="password" placeholder="••••••••" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})}/></div>
             <div><label>New Password</label><input type="password" placeholder="Min. 4 characters" value={pwForm.newPw} onChange={e=>setPwForm({...pwForm,newPw:e.target.value})}/></div>
             <div><label>Confirm New Password</label><input type="password" placeholder="Repeat new password" value={pwForm.confirm} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})}/></div>
-            <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 28px"}} onClick={changePw}>Update Password</button>
+            <button className="btnGold" style={{alignSelf:"flex-start",padding:"12px 28px"}} onClick={changePw} disabled={pwSaving}>{pwSaving?"Updating...":"Update Password"}</button>
           </div>
         </div>
       )}
@@ -2433,8 +2574,8 @@ export default function App() {
   const logout = () => { setUser(null); setPage("Home"); };
 
   // Called from ProfilePanel when user saves username/photo
-  const updateUser = ({username, photo, fullName}) => {
-    setUser(prev => ({...prev, username: username || prev.username, photo: photo || prev.photo, fullName: fullName || prev.fullName}));
+  const updateUser = (updates) => {
+    setUser(prev => ({...prev, ...updates}));
   };
 
   const openProfile = () => {
@@ -2476,7 +2617,7 @@ export default function App() {
             <div style={{fontSize:22,color:"#C9A84C"}}>✞</div>
             <div>
               <div className="font-display" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>JESUS THE ROCK</div>
-              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION</div>
+              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION · D2</div>
             </div>
           </div>
 
@@ -2577,7 +2718,7 @@ export default function App() {
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{fontSize:32,color:"#C9A84C",marginBottom:16}}>✞</div>
           <div className="font-display goldText" style={{fontSize:"1.1rem",marginBottom:8}}>Jesus The Rock of Our Salvation Mission Church</div>
-          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>SERVING BY FAITH</div>
+          <div className="font-sans" style={{fontSize:".7rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:24}}>D2 · SERVING BY FAITH</div>
           <div className="ornament" style={{justifyContent:"center",marginBottom:24}}>
             <span style={{color:"#9A9080",fontStyle:"italic",fontSize:".95rem"}}>"He only is my rock and my salvation; he is my defence; I shall not be moved." — Psalm 62:6</span>
           </div>
@@ -2586,7 +2727,7 @@ export default function App() {
               <span key={n} className="navLink font-sans" style={{fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer",color:"#9A9080"}} onClick={()=>go(n)}>{n}</span>
             ))}
           </div>
-          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Morisoul</div>
+          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 D2 Jesus The Rock of Our Salvation Mission Church · Built with Faith</div>
         </div>
       </footer>
     </ErrorBoundary>
