@@ -41,7 +41,6 @@ export const NAV_ITEMS = ["Home","About","Ministries","Events","Media","Give","P
 export const ROLES = [
   { id: "head",        label: "Head",            icon: "👑", color: "#C9A84C" },
   { id: "treasurer",   label: "Treasurer",        icon: "💰", color: "#7BE0B0" },
-  { id: "financial",   label: "Financial Dept",   icon: "💵", color: "#7B9EF0" },
   { id: "events",      label: "Events Dept",      icon: "🎉", color: "#E07B7B" },
   { id: "performance", label: "Performance Dept", icon: "🎶", color: "#B07BE0" },
   { id: "secretary",   label: "Secretary",        icon: "📝", color: "#E0B07B" },
@@ -52,7 +51,6 @@ export const ROLES = [
 export const ROLE_ACCESS = {
   head:        ["Dashboard Overview","Manage Members","Manage Events","Finance","Post Announcements","Attendance Logs","Export Reports","System Settings","Upload Documents","Rehearsal Schedule","Practice Materials"],
   treasurer:   ["Donation Records","Financial Reports","Monthly Budget","Export Reports","Announcements","Rehearsal Schedule","Practice Materials"],
-  financial:   ["Donation Records","Financial Reports","Announcements","Rehearsal Schedule","Practice Materials"],
   events:      ["Manage Events","Upcoming Events","Post Announcements","Announcements","Rehearsal Schedule","Practice Materials"],
   performance: ["Song List","Rehearsal Schedule","Practice Materials","Announcements"],
   secretary:   ["Member Records","Post Announcements","Upload Documents","Rehearsal Schedule","Practice Materials"],
@@ -74,7 +72,7 @@ export const ACCOUNTS = [
     joinedDate: "January 2024", bio: "Treasurer overseeing church finances.",
   },
   {
-    username: "angie", password: "finance2026", role: "financial",
+    username: "angie", password: "finance2026", role: "treasurer",
     fullName: "Angie", contact: "09XX-XXX-0003",
     address: "Pasig City", birthday: "Mar 3, 1996",
     joinedDate: "January 2024", bio: "Financial Dept — records contributions and offerings.",
@@ -116,7 +114,7 @@ export const ACCOUNTS = [
     joinedDate: "April 2024", bio: "Performance Dept member.",
   },
   {
-    username: "ariane", password: "ariane2026", role: "financial",
+    username: "ariane", password: "ariane2026", role: "treasurer",
     fullName: "Ariane", contact: "09XX-XXX-0010",
     address: "Pasig City", birthday: "—",
     joinedDate: "April 2024", bio: "Financial Dept member.",

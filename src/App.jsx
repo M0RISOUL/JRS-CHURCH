@@ -213,7 +213,7 @@ function Home({go}) {
       </div>
       <section>
         <div style={{maxWidth:700,margin:"0 auto",textAlign:"center"}}>
-          <Hdr eye="A Word From Our Head" title="Welcome to JRS Church"/>
+          <Hdr eye="A Word From Our Head" title="Welcome to JRSMC"/>
           <p style={{fontSize:"1.2rem",lineHeight:2,color:"#B0A898",fontStyle:"italic",marginBottom:32}}>
             "Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."
           </p>
@@ -404,7 +404,7 @@ function Give() {
     <section>
       <Hdr eye="Give & Support" title="Online Offering" sub="Bring the whole tithe into the storehouse. — Malachi 3:10"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:24,marginBottom:48}}>
-        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","JRS Church Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JRS Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
+        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","JRSMC Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JRSMC Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
           <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
             <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
@@ -1502,8 +1502,8 @@ function GivingHistoryPanel() {
               <div><label>Note (Optional)</label><input placeholder="e.g. For Easter Sunday" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></div>
             </div>
             <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,marginBottom:20,fontSize:".85rem",color:"#9A9080",lineHeight:1.9}}>
-              📱 <span style={{color:"#C9A84C"}}>GCash:</span> JRS Church Fund · 09XX-XXX-XXXX<br/>
-              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JRS Mission · XXXX-XXXX-XXXX<br/>
+              📱 <span style={{color:"#C9A84C"}}>GCash:</span> JRSMC Fund · 09XX-XXX-XXXX<br/>
+              🏦 <span style={{color:"#C9A84C"}}>BDO/BPI:</span> JRSMC Mission · XXXX-XXXX-XXXX<br/>
               <span style={{fontSize:".8rem"}}>Please send payment before confirming.</span>
             </div>
             <button className="btnGold" style={{padding:"12px 28px"}} onClick={submit}>Confirm Offering →</button>
@@ -2026,7 +2026,7 @@ function SystemSettingsPanel({user, onUpdateUser}) {
 
   // Page Content State
   const [pageContent, setPageContent] = useState({
-    home:       { hero: "Welcome to Jesus The Rock of Our Salvation", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
+    home:       { hero: "Welcome to Jesus The Rock of Our Salvation Mission Church", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
     about:      { title: "About Our Church", body: "Jesus The Rock of Our Salvation Mission Church is a growing community of believers dedicated to spreading the Gospel and nurturing disciples of Christ.", vision: "To be a church that reflects the love and grace of Jesus Christ.", mission: "To make disciples of all nations through worship, fellowship, and service." },
     ministries: { intro: "We have various ministries designed to help every member grow in faith and serve the community." },
     events:     { intro: "Join us for our upcoming events and gatherings. Everyone is welcome!" },
@@ -2183,7 +2183,7 @@ function RoleAccessManager() {
     "Practice Materials","Attendance Monitoring","Visitor Follow-up","Member List",
     "My Profile","Devotion Submission","View Events","Giving History",
   ];
-  const ROLES = ["head","treasurer","financial","events","performance","secretary","engagement","member"];
+  const ROLES = ["head","treasurer","events","performance","secretary","engagement","member"];
   const [roleAccess, setRoleAccess] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
@@ -2226,7 +2226,7 @@ function RoleAccessManager() {
     setTimeout(()=>setSaved(null),2000);
   };
 
-  const roleLabel = r=>r==="head"?"👑 Head":r==="treasurer"?"💰 Treasurer":r==="financial"?"💵 Financial":r==="events"?"🎉 Events":r==="performance"?"🎶 Performance":r==="secretary"?"📝 Secretary":r==="engagement"?"🤝 Engagement":"👤 Member";
+  const roleLabel = r=>r==="head"?"👑 Head":r==="treasurer"?"💰 Treasurer":r==="events"?"🎉 Events":r==="performance"?"🎶 Performance":r==="secretary"?"📝 Secretary":r==="engagement"?"🤝 Engagement":"👤 Member";
 
   return (
     <div style={{marginTop:32}}>
@@ -2462,7 +2462,7 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
   const [access, setAccess] = useState(ROLE_ACCESS[user.role] || []);
   const [activePanel, setActivePanel] = useState(openProfileOnLoad ? "My Profile" : null);
 
-  // Load role access from Supabase (table: role_access, columns: role text, panels text[])
+  // Load role access from Supabase only
   useEffect(()=>{
     dbGet("role_access","?role=eq."+user.role).then(d=>{
       if(d&&d.length>0&&d[0].panels){
@@ -2471,7 +2471,7 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
           if(Array.isArray(panels)&&panels.length>0) setAccess(panels);
         }catch(e){}
       }
-    });
+    }).catch(()=>{});
   },[user.role]);
 
   // expose setter so nav avatar can open profile
@@ -2617,7 +2617,7 @@ export default function App() {
             <div style={{fontSize:22,color:"#C9A84C"}}>✞</div>
             <div>
               <div className="font-display" style={{fontSize:".65rem",color:"#C9A84C",letterSpacing:".1em"}}>JESUS THE ROCK</div>
-              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION</div>
+              <div className="font-sans" style={{fontSize:".55rem",color:"#8A6A2A",letterSpacing:".15em"}}>OF OUR SALVATION MISSION CHURCH</div>
             </div>
           </div>
 
@@ -2727,7 +2727,7 @@ export default function App() {
               <span key={n} className="navLink font-sans" style={{fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer",color:"#9A9080"}} onClick={()=>go(n)}>{n}</span>
             ))}
           </div>
-          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© 2026 Morisoul</div>
+          <div style={{color:"#3A3A50",fontSize:".8rem"}}>© Morisoul</div>
         </div>
       </footer>
     </ErrorBoundary>
