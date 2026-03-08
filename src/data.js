@@ -26,10 +26,10 @@ export const EVENTS = [
 ];
 
 export const SONGS = [
-  { title: "Rock of My Salvation",      author: "D2 Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
-  { title: "Sa Iyo Ang Papuri",         author: "D2 Worship Team",     category: "Worship",  youtube: "https://www.youtube.com/watch?v=LMnN7DHuMg0" },
-  { title: "Ikaw Ang Aming Bato",       author: "D2 Worship Team",     category: "Hymn",     youtube: "https://www.youtube.com/watch?v=Tq9PbHTSWD0" },
-  { title: "Foundation of My Life",     author: "D2 Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
+  { title: "Rock of My Salvation",      author: "Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
+  { title: "Sa Iyo Ang Papuri",         author: "Worship Team",     category: "Worship",  youtube: "https://www.youtube.com/watch?v=LMnN7DHuMg0" },
+  { title: "Ikaw Ang Aming Bato",       author: "Worship Team",     category: "Hymn",     youtube: "https://www.youtube.com/watch?v=Tq9PbHTSWD0" },
+  { title: "Foundation of My Life",     author: "Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
   { title: "How Great Is Our God",      author: "Chris Tomlin",        category: "Worship",  youtube: "https://www.youtube.com/watch?v=KBD18rsVJHk" },
   { title: "Blessed Be Your Name",      author: "Matt Redman",         category: "Praise",   youtube: "https://www.youtube.com/watch?v=VZBXO8qJuN4" },
   { title: "10,000 Reasons (Bless the Lord)", author: "Matt Redman",  category: "Worship",  youtube: "https://www.youtube.com/watch?v=DXDGE_lRI0E" },
