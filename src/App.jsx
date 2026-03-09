@@ -1,8 +1,43 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, createContext } from "react";
 import {
   NAV_ITEMS, LEADERSHIP, MINISTRIES, EVENTS,
   SONGS, ROLES, ROLE_ACCESS, ACCOUNTS
 } from "./data";
+
+// ── SITE CONTENT CONTEXT ─────────────────────────────────────────────────────
+const SiteContentContext = createContext({});
+const useSiteContent = () => useContext(SiteContentContext);
+
+const DEFAULT_CONTENT = {
+  home:       { hero:"Jesus The Rock of Our Salvation Mission Church", sub:"A community built on faith, love, and the Word of God.", verse:"Psalm 62:6", cta:"Join Our Community",
+    sundayName:"Morning Worship Service", sundayTime:"9:00 AM", midweekName:"Midweek Prayer Meeting", midweekTime:"7:00 PM",
+    monthlyName:"Devotion Sharing & Fellowship", monthlyTime:"3:00 PM", welcomeTitle:"Welcome to JRSMC", welcomeBy:"Kuya Ivan, Head",
+    welcomeQuote:"Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here." },
+  about:      { eyebrow:"Who We Are", title:"About Our Church", sub:"Built on the Rock — Jesus Christ, our eternal foundation.",
+    visionLabel:"Our Vision", vision:"To be a vibrant community of believers, firmly rooted in Jesus Christ — growing in faith, united in love, and sent into the world as living testimonies of His grace and salvation.",
+    missionLabel:"Our Mission", mission:"To proclaim the Gospel of Jesus Christ, make devoted disciples, nurture a family of worshippers, and extend God's kingdom through faithful service, compassionate outreach, and Spirit-filled living.",
+    coreEyebrow:"What We Stand For", coreTitle:"Core Values",
+    val1:"Faith", val1d:"Trusting God completely in every season.", val2:"Love", val2d:"Loving God and one another as Christ commanded.",
+    val3:"Worship", val3d:"Giving God glory through praise, prayer, and devotion.", val4:"Community", val4d:"Doing life together as a family of believers.",
+    val5:"Service", val5d:"Using our gifts to serve God and others selflessly.", val6:"Integrity", val6d:"Living transparently and accountably before God.",
+    leaderEyebrow:"Our Leaders", leaderTitle:"Leadership Team" },
+  ministries: { eyebrow:"Serving Together", title:"Our Ministries", sub:"Every ministry is vital to the body of Christ.", intro:"Every ministry is vital to the body of Christ.",
+    min1:"Worship Ministry", min1d:"Leading the congregation in heartfelt praise and worship to God.",
+    min2:"Youth Ministry", min2d:"Nurturing the next generation in faith and discipleship.",
+    min3:"Children's Ministry", min3d:"Teaching children the love of God through fun and engaging activities.",
+    min4:"Prayer Ministry", min4d:"Covering the church and community in intercessory prayer.",
+    min5:"Outreach Ministry", min5d:"Spreading the Gospel and serving the community with love.",
+    min6:"Performance Dept", min6d:"Creative presentations and performances that glorify God." },
+  events:     { eyebrow:"Plan Your Visit", title:"Events Calendar", intro:"Join us for our upcoming events and gatherings. Everyone is welcome!" },
+  media:      { eyebrow:"God's Word & Worship", title:"Sermons & Media", intro:"Watch our latest sermons and worship sessions. Be blessed wherever you are.",
+    fbUrl:"https://www.facebook.com/profile.php?id=61568763184691", liveSchedule:"Every Sunday at 9:00 AM", liveBtn:"Watch Live on Facebook",
+    musicEyebrow:"Our Music", musicTitle:"Song List & Music Player" },
+  give:       { eyebrow:"Give & Support", title:"Online Offering", intro:"Your generous giving helps us continue the ministry and reach more lives for Christ.", note:"All donations are used for church operations, outreach, and community service.",
+    gcashLabel:"📱 GCASH", gcashNameLabel:"Name", gcashName:"JRSMC Fund", gcashNumLabel:"Number",
+    bankLabel:"🏦 BANK TRANSFER", bankNameLabel:"Bank", bankAccNameLabel:"Account Name", bankAccName:"JRSMC Mission", bankAccNumLabel:"Account No" },
+  prayer:     { eyebrow:"We're Here For You", title:"Prayer Requests", intro:"We believe in the power of prayer. Submit your prayer requests and our team will pray for you.",
+    note:"All prayer requests are kept confidential unless you choose to share publicly.", successTitle:"Prayer Submitted", successMsg:"Our prayer team will intercede for you." },
+};
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = {error:null}; }
@@ -136,6 +171,7 @@ const Hdr = ({eye,title,sub}) => (
 );
 
 function Home({go}) {
+  const sc = useSiteContent(); const hm = sc.home||{}; const gs = sc._general||{};
   const [homeEvents, setHomeEvents] = useState([]);
   useEffect(()=>{dbGet("announcements","?author=eq.__upcoming__&order=created_at.asc").then(d=>{if(d)setHomeEvents(d);});},[]);
   return (
@@ -150,12 +186,12 @@ function Home({go}) {
             <span className="font-sans" style={{fontSize:".7rem",letterSpacing:".25em",textTransform:"uppercase",color:"#C9A84C"}}>Est. by Faith</span>
           </div>
           <h1 className="font-display heroTitle goldText" style={{fontSize:"clamp(1.6rem,5vw,3.2rem)",lineHeight:1.3,marginBottom:12,maxWidth:700}}>
-            Jesus The Rock<br/>of Our Salvation<br/>Mission Church
+            {hm.hero||"Jesus The Rock of Our Salvation Mission Church"}
           </h1>
-          <p style={{fontStyle:"italic",color:"#9A9080",fontSize:"1.2rem",marginBottom:8}}>"He only is my rock and my salvation"</p>
-          <p className="font-sans" style={{fontSize:".8rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:40}}>PSALM 62:6</p>
+          <p style={{fontStyle:"italic",color:"#9A9080",fontSize:"1.2rem",marginBottom:8}}>{hm.sub||"A community built on faith, love, and the Word of God."}</p>
+          <p className="font-sans" style={{fontSize:".8rem",letterSpacing:".15em",color:"#8A6A2A",marginBottom:40}}>{hm.verse||"PSALM 62:6"}</p>
           <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
-            <button className="btnGold aPulse" onClick={()=>go("Events")}>Join Us This Sunday</button>
+            <button className="btnGold aPulse" onClick={()=>go("Events")}>{hm.cta||"Join Our Community"}</button>
             <a href="https://www.facebook.com/profile.php?id=61568763184691" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}><button className="btnOut">📺 Watch Live</button></a>
           </div>
         </div>
@@ -166,7 +202,7 @@ function Home({go}) {
       <section>
         <Hdr eye="Come Worship With Us" title="Service Schedule"/>
         <div className="g3">
-          {[{d:"Sunday",t:"9:00 AM",n:"Morning Worship Service",i:"☀️"},{d:"Wednesday",t:"7:00 PM",n:"Midweek Prayer Meeting",i:"🙏"},{d:"Monthly",t:"3:00 PM",n:"Devotion Sharing & Fellowship",i:"📖"}].map(s=>(
+          {[{d:"Sunday",t:gs.sunday||hm.sundayTime||"9:00 AM",n:hm.sundayName||"Morning Worship Service",i:"☀️"},{d:"Wednesday",t:gs.midweek||hm.midweekTime||"7:00 PM",n:hm.midweekName||"Midweek Prayer Meeting",i:"🙏"},{d:"Monthly",t:hm.monthlyTime||"3:00 PM",n:hm.monthlyName||"Devotion Sharing & Fellowship",i:"📖"}].map(s=>(
             <div key={s.d} className="card" style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative",overflow:"hidden"}}>
               <TL/><div style={{fontSize:32,marginBottom:16}}>{s.i}</div>
               <div className="font-sans" style={{fontSize:".75rem",letterSpacing:".15em",color:"#C9A84C",marginBottom:8}}>{s.d.toUpperCase()}</div>
@@ -213,12 +249,12 @@ function Home({go}) {
       </div>
       <section>
         <div style={{maxWidth:700,margin:"0 auto",textAlign:"center"}}>
-          <Hdr eye="A Word From Our Head" title="Welcome to JRSMC"/>
+          <Hdr eye="A Word From Our Head" title={hm.welcomeTitle||"Welcome to JRSMC"}/>
           <p style={{fontSize:"1.2rem",lineHeight:2,color:"#B0A898",fontStyle:"italic",marginBottom:32}}>
-            "Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."
+            "{hm.welcomeQuote||"Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."}"
           </p>
           <div className="ornament" style={{justifyContent:"center"}}>
-            <span style={{fontSize:".9rem",color:"#C9A84C"}}>— Kuya Ivan, Head</span>
+            <span style={{fontSize:".9rem",color:"#C9A84C"}}>— {hm.welcomeBy||"Kuya Ivan, Head"}</span>
           </div>
         </div>
       </section>
@@ -227,11 +263,12 @@ function Home({go}) {
 }
 
 function About() {
+  const sc = useSiteContent(); const ab = sc.about||{};
   return (
     <section>
-      <Hdr eye="Who We Are" title="About Our Church" sub="Built on the Rock — Jesus Christ, our eternal foundation."/>
+      <Hdr eye={ab.eyebrow||"Who We Are"} title={ab.title||"About Our Church"} sub={ab.sub||"Built on the Rock — Jesus Christ, our eternal foundation."}/>
       <div className="g2" style={{marginBottom:60}}>
-        {[{l:"Our Vision",i:"👁️",t:"To be a vibrant community of believers, firmly rooted in Jesus Christ — growing in faith, united in love, and sent into the world as living testimonies of His grace and salvation."},{l:"Our Mission",i:"🎯",t:"To proclaim the Gospel of Jesus Christ, make devoted disciples, nurture a family of worshippers, and extend God's kingdom through faithful service, compassionate outreach, and Spirit-filled living."}].map(m=>(
+        {[{l:ab.visionLabel||"Our Vision",i:"👁️",t:ab.vision||"To be a vibrant community of believers, firmly rooted in Jesus Christ — growing in faith, united in love."},{l:ab.missionLabel||"Our Mission",i:"🎯",t:ab.mission||"To proclaim the Gospel of Jesus Christ, make devoted disciples, nurture a family of worshippers."}].map(m=>(
           <div key={m.l} className="card" style={{background:"#12121A",border:"1px solid #22223A",padding:40,position:"relative",overflow:"hidden"}}>
             <TL/><div style={{fontSize:36,marginBottom:16}}>{m.i}</div>
             <h3 className="font-display" style={{fontSize:"1.2rem",color:"#C9A84C",marginBottom:16}}>{m.l}</h3>
@@ -239,9 +276,16 @@ function About() {
           </div>
         ))}
       </div>
-      <Hdr eye="What We Stand For" title="Core Values"/>
+      <Hdr eye={ab.coreEyebrow||"What We Stand For"} title={ab.coreTitle||"Core Values"}/>
       <div className="g3" style={{marginBottom:60}}>
-        {[{v:"Faith",d:"Trusting God completely in every season.",i:"✝️"},{v:"Love",d:"Loving God and one another as Christ commanded.",i:"❤️"},{v:"Worship",d:"Giving God glory through praise, prayer, and devotion.",i:"🎵"},{v:"Community",d:"Doing life together as a family of believers.",i:"🤝"},{v:"Service",d:"Using our gifts to serve God and others selflessly.",i:"🕊️"},{v:"Integrity",d:"Living transparently and accountably before God.",i:"🛡️"}].map(c=>(
+        {[
+          {v:ab.val1||"Faith",      d:ab.val1d||"Trusting God completely in every season.",                    i:"✝️"},
+          {v:ab.val2||"Love",       d:ab.val2d||"Loving God and one another as Christ commanded.",             i:"❤️"},
+          {v:ab.val3||"Worship",    d:ab.val3d||"Giving God glory through praise, prayer, and devotion.",      i:"🎵"},
+          {v:ab.val4||"Community",  d:ab.val4d||"Doing life together as a family of believers.",               i:"🤝"},
+          {v:ab.val5||"Service",    d:ab.val5d||"Using our gifts to serve God and others selflessly.",          i:"🕊️"},
+          {v:ab.val6||"Integrity",  d:ab.val6d||"Living transparently and accountably before God.",             i:"🛡️"},
+        ].map(c=>(
           <div key={c.v} className="card" style={{background:"#12121A",border:"1px solid #22223A",padding:28,textAlign:"center"}}>
             <div style={{fontSize:32,marginBottom:12}}>{c.i}</div>
             <h4 className="font-display" style={{fontSize:"1rem",color:"#C9A84C",marginBottom:8}}>{c.v}</h4>
@@ -249,27 +293,48 @@ function About() {
           </div>
         ))}
       </div>
-      <Hdr eye="Our Leaders" title="Leadership Team"/>
-      <div className="g3">
-        {LEADERSHIP.map(l=>(
-          <div key={l.name} className="card" style={{background:"#12121A",border:"1px solid #22223A",padding:28}}>
-            <div style={{width:64,height:64,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,.2),rgba(201,168,76,.05))",border:"1px solid rgba(201,168,76,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:16}}>{l.icon}</div>
-            <h4 className="font-sans" style={{fontSize:"1rem",marginBottom:4}}>{l.name}</h4>
-            <div className="badge" style={{marginBottom:12}}>{l.role}</div>
-            <p style={{color:"#9A9080",fontSize:".9rem",lineHeight:1.7}}>{l.desc}</p>
-          </div>
-        ))}
-      </div>
+      <Hdr eye={ab.leaderEyebrow||"Our Leaders"} title={ab.leaderTitle||"Leadership Team"}/>
+      <LeadershipCards/>
     </section>
   );
 }
 
+function LeadershipCards() {
+  const [leaders, setLeaders] = useState([]);
+  useEffect(()=>{
+    dbGet("leadership","?order=sort_order.asc,id.asc").then(d=>{
+      if(d&&d.length>0) setLeaders(d);
+      else setLeaders(LEADERSHIP.map(l=>({...l,description:l.desc}))); // fallback to hardcoded
+    }).catch(()=>setLeaders(LEADERSHIP));
+  },[]);
+  return (
+    <div className="g3">
+      {leaders.map(l=>(
+        <div key={l.id||l.name} className="card" style={{background:"#12121A",border:"1px solid #22223A",padding:28}}>
+          <div style={{width:64,height:64,borderRadius:"50%",background:"radial-gradient(circle,rgba(201,168,76,.2),rgba(201,168,76,.05))",border:"1px solid rgba(201,168,76,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:16}}>{l.icon||"👤"}</div>
+          <h4 className="font-sans" style={{fontSize:"1rem",marginBottom:4}}>{l.name}</h4>
+          <div className="badge" style={{marginBottom:12}}>{l.role}</div>
+          <p style={{color:"#9A9080",fontSize:".9rem",lineHeight:1.7}}>{l.description}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Ministries() {
+  const sc = useSiteContent(); const mn = sc.ministries||{};
   return (
     <section>
-      <Hdr eye="Serving Together" title="Our Ministries" sub="Every ministry is vital to the body of Christ."/>
+      <Hdr eye={mn.eyebrow||"Serving Together"} title={mn.title||"Our Ministries"} sub={mn.sub||mn.intro||"Every ministry is vital to the body of Christ."}/>
       <div className="g3">
-        {MINISTRIES.map(m=>(
+        {[
+          {name:mn.min1||MINISTRIES[0]?.name, desc:mn.min1d||MINISTRIES[0]?.desc, icon:MINISTRIES[0]?.icon},
+          {name:mn.min2||MINISTRIES[1]?.name, desc:mn.min2d||MINISTRIES[1]?.desc, icon:MINISTRIES[1]?.icon},
+          {name:mn.min3||MINISTRIES[2]?.name, desc:mn.min3d||MINISTRIES[2]?.desc, icon:MINISTRIES[2]?.icon},
+          {name:mn.min4||MINISTRIES[3]?.name, desc:mn.min4d||MINISTRIES[3]?.desc, icon:MINISTRIES[3]?.icon},
+          {name:mn.min5||MINISTRIES[4]?.name, desc:mn.min5d||MINISTRIES[4]?.desc, icon:MINISTRIES[4]?.icon},
+          {name:mn.min6||MINISTRIES[5]?.name, desc:mn.min6d||MINISTRIES[5]?.desc, icon:MINISTRIES[5]?.icon},
+        ].filter(m=>m.name).map(m=>(
           <div key={m.name} className="card" style={{background:"#12121A",border:"1px solid #22223A",padding:36,position:"relative",overflow:"hidden"}}>
             <TL/>
             <div style={{fontSize:40,marginBottom:20}}>{m.icon}</div>
@@ -283,13 +348,14 @@ function Ministries() {
 }
 
 function Events() {
+  const sc = useSiteContent(); const ev = sc.events||{};
   const [events, setEvents] = useState([]);
   useEffect(()=>{dbGet("events","?order=created_at.asc").then(d=>{if(d)setEvents(d);});},[]);
   const typeColor = t=>t==="worship"?"#C9A84C":t==="prayer"?"#B07BE0":t==="youth"?"#7BE0B0":t==="event"?"#7B9EF0":t==="devotion"?"#E0B07B":"#9A9080";
   const typeIcon  = t=>t==="worship"?"✝️":t==="prayer"?"🙏":t==="youth"?"🌟":t==="event"?"🎉":t==="devotion"?"📖":"📅";
   return (
     <section>
-      <Hdr eye="Plan Your Visit" title="Events Calendar"/>
+      <Hdr eye={ev.eyebrow||"Plan Your Visit"} title={ev.title||"Events Calendar"} sub={ev.intro||""}/>
       <div style={{marginBottom:60}}>
         {events.length===0 && <div style={{color:"#9A9080",textAlign:"center",padding:32}}>No upcoming events yet. Check back soon!</div>}
         {events.map(e=>{
@@ -317,6 +383,7 @@ function Events() {
   );
 }
 function Media() {
+  const sc = useSiteContent(); const med = sc.media||{};
   const [songs, setSongs] = useState([]);
   const [playing, setPlaying] = useState(null);
   const [filter, setFilter] = useState("All");
@@ -333,22 +400,22 @@ function Media() {
   const vid = cur ? getYouTubeId(cur.youtube) : null;
   return (
     <section>
-      <Hdr eye="God's Word & Worship" title="Sermons & Media"/>
+      <Hdr eye={med.eyebrow||"God's Word & Worship"} title={med.title||"Sermons & Media"} sub={med.intro||""}/>
       <div style={{background:"#12121A",border:"1px solid #22223A",padding:48,marginBottom:48,position:"relative",textAlign:"center"}}>
         <TL/>
-        <a href="https://www.facebook.com/profile.php?id=61568763184691" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none",display:"block"}}>
+        <a href={med.fbUrl||"https://www.facebook.com/profile.php?id=61568763184691"} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none",display:"block"}}>
           <div style={{width:"100%",maxWidth:640,height:300,margin:"0 auto",background:"#0A0A0F",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"1px solid #22223A",marginBottom:24,cursor:"pointer",transition:"all .3s"}}
             onMouseEnter={e=>{e.currentTarget.style.border="1px solid #C9A84C";e.currentTarget.style.background="#0F0F18";}}
             onMouseLeave={e=>{e.currentTarget.style.border="1px solid #22223A";e.currentTarget.style.background="#0A0A0F";}}>
             <div className="aPulse" style={{width:72,height:72,borderRadius:"50%",background:"rgba(201,168,76,.15)",border:"2px solid #C9A84C",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:16}}>▶</div>
             <div className="font-sans" style={{fontSize:".8rem",letterSpacing:".15em",color:"#C9A84C"}}>FACEBOOK LIVE</div>
-            <div style={{color:"#9A9080",fontSize:".9rem",marginTop:8}}>Every Sunday at 9:00 AM</div>
+            <div style={{color:"#9A9080",fontSize:".9rem",marginTop:8}}>{med.liveSchedule||"Every Sunday at 9:00 AM"}</div>
             <div style={{color:"#C9A84C",fontSize:".75rem",marginTop:12,fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".1em"}}>Click to watch →</div>
           </div>
         </a>
-        <a href="https://www.facebook.com/profile.php?id=61568763184691" target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}><button className="btnGold">📺 Watch Live on Facebook</button></a>
+        <a href={med.fbUrl||"https://www.facebook.com/profile.php?id=61568763184691"} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}><button className="btnGold">📺 {med.liveBtn||"Watch Live on Facebook"}</button></a>
       </div>
-      <Hdr eye="Our Music" title="Song List & Music Player"/>
+      <Hdr eye={med.musicEyebrow||"Our Music"} title={med.musicTitle||"Song List & Music Player"}/>
       {cur && (
         <div style={{background:"#12121A",border:"1px solid #B07BE0",marginBottom:28,position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#B07BE0,transparent)"}}/>
@@ -400,11 +467,15 @@ function Media() {
   );
 }
 function Give() {
+  const sc = useSiteContent(); const gv = sc.give||{}; const gs = sc._general||{};
   return (
     <section>
-      <Hdr eye="Give & Support" title="Online Offering" sub="Bring the whole tithe into the storehouse. — Malachi 3:10"/>
+      <Hdr eye={gv.eyebrow||"Give & Support"} title={gv.title||"Online Offering"} sub={gv.intro||"Bring the whole tithe into the storehouse. — Malachi 3:10"}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:24,marginBottom:48}}>
-        {[{color:"#4A6FBF",label:"📱 GCASH",info:[["Name","JRSMC Fund"],["Number","09XX-XXX-XXXX"]]},{color:"#7B4FCF",label:"🏦 BANK TRANSFER",info:[["Bank","BDO / BPI"],["Account Name","JRSMC Mission"],["Account No","XXXX-XXXX-XXXX"]]}].map(b=>(
+        {[
+        {color:"#4A6FBF",label:gv.gcashLabel||"📱 GCASH",info:[[gv.gcashNameLabel||"Name",gv.gcashName||gs.gcashName||"JRSMC Fund"],[gv.gcashNumLabel||"Number",gs.gcash||"09XX-XXX-XXXX"]]},
+        {color:"#7B4FCF",label:gv.bankLabel||"🏦 BANK TRANSFER",info:[[gv.bankNameLabel||"Bank",gs.bankName||"BDO / BPI"],[gv.bankAccNameLabel||"Account Name",gv.bankAccName||"JRSMC Mission"],[gv.bankAccNumLabel||"Account No",gs.bank||"XXXX-XXXX-XXXX"]]}
+      ].map(b=>(
           <div key={b.label} style={{background:"#12121A",border:"1px solid #22223A",padding:32,position:"relative"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${b.color},transparent)`}}/>
             <h4 className="font-sans" style={{fontSize:".85rem",letterSpacing:".1em",color:b.color,marginBottom:16}}>{b.label}</h4>
@@ -417,6 +488,7 @@ function Give() {
 }
 
 function Prayer() {
+  const sc = useSiteContent(); const pr = sc.prayer||{};
   const [f,setF]=useState({name:"",req:"",conf:false});
   const [ok,setOk]=useState(false);
   const [loading,setLoading]=useState(false);
@@ -433,15 +505,15 @@ function Prayer() {
   };
   return (
     <section>
-      <Hdr eye="We're Here For You" title="Prayer Requests" sub="Cast your burdens upon the Lord. — Psalm 55:22"/>
+      <Hdr eye={pr.eyebrow||"We're Here For You"} title={pr.title||"Prayer Requests"} sub={pr.intro||"Cast your burdens upon the Lord. — Psalm 55:22"}/>
       <div style={{maxWidth:640,margin:"0 auto"}}>
         <div style={{background:"#12121A",border:"1px solid #22223A",padding:48,position:"relative"}}>
           <TL/><Cross size={200} op={0.04} top="0" right="-40px"/>
           {ok?(
             <div style={{textAlign:"center",padding:"32px 0"}}>
               <div style={{fontSize:48,marginBottom:16}}>🙏</div>
-              <h4 className="font-display" style={{color:"#C9A84C",marginBottom:12}}>Prayer Submitted</h4>
-              <p style={{color:"#9A9080",lineHeight:1.8}}>Our prayer team will intercede for you.</p>
+              <h4 className="font-display" style={{color:"#C9A84C",marginBottom:12}}>{pr.successTitle||"Prayer Submitted"}</h4>
+              <p style={{color:"#9A9080",lineHeight:1.8}}>{pr.successMsg||"Our prayer team will intercede for you."}</p>
               <button className="btnOut" style={{marginTop:24}} onClick={()=>setOk(false)}>Submit Another</button>
             </div>
           ):(
@@ -1413,9 +1485,10 @@ function SongsPanel() {
   );
 }
 
-function DevotionPanel() {
+function DevotionPanel({user}) {
   const [devotions,setDevotions]=useState([]);
   const [confirmId,setConfirmId]=useState(null);
+  const [confirmReset,setConfirmReset]=useState(false);
   const [form,setForm]=useState({name:"",book:"",insight:""});
   const [adding,setAdding]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -1426,12 +1499,30 @@ function DevotionPanel() {
     if(r&&r[0]){setDevotions([r[0],...devotions]);addLog("📖",form.name+" shared a devotion from "+(form.book||"the Bible"),"Member",form.name);}
     setForm({name:"",book:"",insight:""});setAdding(false);
   };
-  const like=async(id,likes)=>{await dbUpdate("devotions",id,{likes:likes+1});setDevotions(devotions.map(x=>x.id===id?{...x,likes:likes+1}:x));};
+  const remove=async(id)=>{await dbDelete("devotions",id);setDevotions(devotions.filter(x=>x.id!==id));};
+  const resetAll=async()=>{
+    for(const d of devotions){ await dbDelete("devotions",d.id); }
+    setDevotions([]);
+    addLog("🗑️","All devotions reset for the month","Head","Kuya Ivan");
+  };
+  const [liked, setLiked] = useState({});
+  const like=async(id,likes)=>{
+    const hasLiked = liked[id];
+    const newCount = hasLiked ? likes-1 : likes+1;
+    await dbUpdate("devotions",id,{likes:newCount});
+    setDevotions(devotions.map(x=>x.id===id?{...x,likes:newCount}:x));
+    setLiked({...liked,[id]:!hasLiked});
+  };
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <h4 className="font-display" style={{color:"#E8CC7A"}}>📖 Monthly Devotion Sharing</h4>
-        <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Share Devotion"}</button>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {user?.role==="head"&&devotions.length>0&&(
+            <button className="btnRed" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setConfirmReset(true)}>🗑 Reset Month</button>
+          )}
+          <button className="btnGold" style={{padding:"10px 20px",fontSize:".75rem"}} onClick={()=>setAdding(!adding)}>{adding?"Cancel":"+ Share Devotion"}</button>
+        </div>
       </div>
       {adding&&(<div style={{background:"#1A1A28",border:"1px solid #22223A",padding:24,marginBottom:24,display:"flex",flexDirection:"column",gap:12}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -1451,15 +1542,19 @@ function DevotionPanel() {
                 <span style={{fontWeight:600}}>{d.name}</span>
                 {d.book&&<span style={{marginLeft:10,padding:"2px 10px",background:"rgba(123,79,207,.1)",border:"1px solid rgba(123,79,207,.3)",color:"#B07BE0",fontSize:".75rem"}}>📖 {d.book}</span>}
               </div>
-              <div style={{color:"#9A9080",fontSize:".8rem"}}>{new Date(d.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</div>
+              <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                <div style={{color:"#9A9080",fontSize:".8rem"}}>{new Date(d.created_at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</div>
+                {user?.role==="head"&&<button onClick={()=>setConfirmId(d.id)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".8rem"}}>🗑</button>}
+              </div>
             </div>
             <p style={{color:"#B0A898",lineHeight:1.8,fontStyle:"italic",marginBottom:12}}>"{d.insight}"</p>
-            <button onClick={()=>like(d.id,d.likes)} style={{background:"none",border:"none",color:"#C9A84C",cursor:"pointer",fontSize:".85rem"}}>🙏 Amen ({d.likes})</button>
+            <button onClick={()=>like(d.id,d.likes)} style={{background:"none",border:"none",color:liked[d.id]?"#E8CC7A":"#C9A84C",cursor:"pointer",fontSize:".85rem",fontWeight:liked[d.id]?"700":"400"}}>🙏 Amen ({d.likes})</button>
           </div>
         ))}
         {devotions.length===0&&<div style={{color:"#9A9080",textAlign:"center",padding:32}}>No devotions yet. Be the first to share!</div>}
       </div>)}
       {confirmId&&<ConfirmDialog onConfirm={()=>{remove(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
+      {confirmReset&&<ConfirmDialog message="Reset ALL devotions for this month? This cannot be undone." onConfirm={()=>{resetAll();setConfirmReset(false);}} onCancel={()=>setConfirmReset(false)}/>}
     </div>
   );
 }
@@ -2008,7 +2103,11 @@ function ExportPanel() {
 // ── SYSTEM SETTINGS PANEL ────────────────────────────────────────────────────
 function SystemSettingsPanel({user, onUpdateUser}) {
   const [tab, setTab] = useState("general");
-  const [settings, setSettings] = useState({
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [loadingContent, setLoadingContent] = useState(true);
+
+  // ── GENERAL SETTINGS ──
+  const defaultSettings = {
     churchName: "Jesus The Rock of Our Salvation Mission Church",
     tagline:    "He only is my rock and my salvation — Psalm 62:6",
     gcash:      "09XX-XXX-XXXX",
@@ -2019,39 +2118,221 @@ function SystemSettingsPanel({user, onUpdateUser}) {
     midweek:    "7:00 PM",
     allowSignup: false,
     maintenanceMode: false,
-  });
-  const [saved, setSaved] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [contentSaved, setContentSaved] = useState(false);
+  };
+  const [settings, setSettings] = useState(defaultSettings);
+  const [editing, setEditing]   = useState(false);
+  const [saving,  setSaving]    = useState(false);
+  const [saved,   setSaved]     = useState(false);
 
-  // Page Content State
-  const [pageContent, setPageContent] = useState({
-    home:       { hero: "Welcome to Jesus The Rock of Our Salvation Mission Church", sub: "A community built on faith, love, and the Word of God.", verse: "Psalm 62:6", cta: "Join Our Community" },
-    about:      { title: "About Our Church", body: "Jesus The Rock of Our Salvation Mission Church is a growing community of believers dedicated to spreading the Gospel and nurturing disciples of Christ.", vision: "To be a church that reflects the love and grace of Jesus Christ.", mission: "To make disciples of all nations through worship, fellowship, and service." },
-    ministries: { intro: "We have various ministries designed to help every member grow in faith and serve the community." },
-    events:     { intro: "Join us for our upcoming events and gatherings. Everyone is welcome!" },
-    media:      { intro: "Watch our latest sermons and worship sessions. Be blessed wherever you are." },
-    give:       { intro: "Your generous giving helps us continue the ministry and reach more lives for Christ.", note: "All donations are used for church operations, outreach, and community service." },
-    prayer:     { intro: "We believe in the power of prayer. Submit your prayer requests and our team will pray for you.", note: "All prayer requests are kept confidential unless you choose to share publicly." },
-  });
+  // ── PAGE CONTENT ──
+  // Each page has a list of { label, key, multiline, value }
+  const defaultPages = {
+    home: [
+      {label:"Hero Title",             key:"hero",         multiline:false, value:"Jesus The Rock of Our Salvation Mission Church"},
+      {label:"Subtitle",               key:"sub",          multiline:false, value:"A community built on faith, love, and the Word of God."},
+      {label:"Bible Verse",            key:"verse",        multiline:false, value:"Psalm 62:6"},
+      {label:"CTA Button Text",        key:"cta",          multiline:false, value:"Join Our Community"},
+      {label:"Sunday Service Name",    key:"sundayName",   multiline:false, value:"Morning Worship Service"},
+      {label:"Sunday Service Time",    key:"sundayTime",   multiline:false, value:"9:00 AM"},
+      {label:"Midweek Service Name",   key:"midweekName",  multiline:false, value:"Midweek Prayer Meeting"},
+      {label:"Midweek Service Time",   key:"midweekTime",  multiline:false, value:"7:00 PM"},
+      {label:"Monthly Service Name",   key:"monthlyName",  multiline:false, value:"Devotion Sharing & Fellowship"},
+      {label:"Monthly Service Time",   key:"monthlyTime",  multiline:false, value:"3:00 PM"},
+      {label:"Welcome Section Title",  key:"welcomeTitle", multiline:false, value:"Welcome to JRSMC"},
+      {label:"Welcome Quote",          key:"welcomeQuote", multiline:true,  value:"Welcome to Jesus The Rock of Our Salvation Mission Church. We are a community built on faith, love, and the unshakeable foundation of Christ. Whether you are searching, growing, or serving, there is a place for you here."},
+      {label:"Quote Attribution",      key:"welcomeBy",    multiline:false, value:"Kuya Ivan, Head"},
+    ],
+    about: [
+      {label:"Eyebrow Text",           key:"eyebrow",      multiline:false, value:"Who We Are"},
+      {label:"Page Title",             key:"title",        multiline:false, value:"About Our Church"},
+      {label:"Page Subtitle",          key:"sub",          multiline:false, value:"Built on the Rock — Jesus Christ, our eternal foundation."},
+      {label:"Vision Label",           key:"visionLabel",  multiline:false, value:"Our Vision"},
+      {label:"Vision Text",            key:"vision",       multiline:true,  value:"To be a vibrant community of believers, firmly rooted in Jesus Christ — growing in faith, united in love, and sent into the world as living testimonies of His grace and salvation."},
+      {label:"Mission Label",          key:"missionLabel", multiline:false, value:"Our Mission"},
+      {label:"Mission Text",           key:"mission",      multiline:true,  value:"To proclaim the Gospel of Jesus Christ, make devoted disciples, nurture a family of worshippers, and extend God's kingdom through faithful service, compassionate outreach, and Spirit-filled living."},
+      {label:"Core Values Eyebrow",    key:"coreEyebrow",  multiline:false, value:"What We Stand For"},
+      {label:"Core Values Title",      key:"coreTitle",    multiline:false, value:"Core Values"},
+      {label:"Value 1 Name",           key:"val1",         multiline:false, value:"Faith"},
+      {label:"Value 1 Description",    key:"val1d",        multiline:false, value:"Trusting God completely in every season."},
+      {label:"Value 2 Name",           key:"val2",         multiline:false, value:"Love"},
+      {label:"Value 2 Description",    key:"val2d",        multiline:false, value:"Loving God and one another as Christ commanded."},
+      {label:"Value 3 Name",           key:"val3",         multiline:false, value:"Worship"},
+      {label:"Value 3 Description",    key:"val3d",        multiline:false, value:"Giving God glory through praise, prayer, and devotion."},
+      {label:"Value 4 Name",           key:"val4",         multiline:false, value:"Community"},
+      {label:"Value 4 Description",    key:"val4d",        multiline:false, value:"Doing life together as a family of believers."},
+      {label:"Value 5 Name",           key:"val5",         multiline:false, value:"Service"},
+      {label:"Value 5 Description",    key:"val5d",        multiline:false, value:"Using our gifts to serve God and others selflessly."},
+      {label:"Value 6 Name",           key:"val6",         multiline:false, value:"Integrity"},
+      {label:"Value 6 Description",    key:"val6d",        multiline:false, value:"Living transparently and accountably before God."},
+      {label:"Leadership Eyebrow",     key:"leaderEyebrow",multiline:false, value:"Our Leaders"},
+      {label:"Leadership Title",       key:"leaderTitle",  multiline:false, value:"Leadership Team"},
+    ],
+    ministries: [
+      {label:"Eyebrow Text",           key:"eyebrow",      multiline:false, value:"Serving Together"},
+      {label:"Page Title",             key:"title",        multiline:false, value:"Our Ministries"},
+      {label:"Subtitle / Intro",       key:"sub",          multiline:true,  value:"Every ministry is vital to the body of Christ."},
+      {label:"Ministry 1 Name",        key:"min1",         multiline:false, value:"Worship Ministry"},
+      {label:"Ministry 1 Description", key:"min1d",        multiline:true,  value:"Leading the congregation in heartfelt praise and worship to God."},
+      {label:"Ministry 2 Name",        key:"min2",         multiline:false, value:"Youth Ministry"},
+      {label:"Ministry 2 Description", key:"min2d",        multiline:true,  value:"Nurturing the next generation in faith and discipleship."},
+      {label:"Ministry 3 Name",        key:"min3",         multiline:false, value:"Children's Ministry"},
+      {label:"Ministry 3 Description", key:"min3d",        multiline:true,  value:"Teaching children the love of God through fun and engaging activities."},
+      {label:"Ministry 4 Name",        key:"min4",         multiline:false, value:"Prayer Ministry"},
+      {label:"Ministry 4 Description", key:"min4d",        multiline:true,  value:"Covering the church and community in intercessory prayer."},
+      {label:"Ministry 5 Name",        key:"min5",         multiline:false, value:"Outreach Ministry"},
+      {label:"Ministry 5 Description", key:"min5d",        multiline:true,  value:"Spreading the Gospel and serving the community with love."},
+      {label:"Ministry 6 Name",        key:"min6",         multiline:false, value:"Performance Dept"},
+      {label:"Ministry 6 Description", key:"min6d",        multiline:true,  value:"Creative presentations and performances that glorify God."},
+    ],
+    events: [
+      {label:"Eyebrow Text",           key:"eyebrow",      multiline:false, value:"Plan Your Visit"},
+      {label:"Page Title",             key:"title",        multiline:false, value:"Events Calendar"},
+      {label:"Intro Text",             key:"intro",        multiline:true,  value:"Join us for our upcoming events and gatherings. Everyone is welcome!"},
+    ],
+    media: [
+      {label:"Eyebrow Text",           key:"eyebrow",      multiline:false, value:"God's Word & Worship"},
+      {label:"Page Title",             key:"title",        multiline:false, value:"Sermons & Media"},
+      {label:"Intro Text",             key:"intro",        multiline:true,  value:"Watch our latest sermons and worship sessions. Be blessed wherever you are."},
+      {label:"Facebook Page URL",      key:"fbUrl",        multiline:false, value:"https://www.facebook.com/profile.php?id=61568763184691"},
+      {label:"Live Schedule Text",     key:"liveSchedule", multiline:false, value:"Every Sunday at 9:00 AM"},
+      {label:"Watch Live Button Text", key:"liveBtn",      multiline:false, value:"Watch Live on Facebook"},
+      {label:"Music Section Eyebrow",  key:"musicEyebrow", multiline:false, value:"Our Music"},
+      {label:"Music Section Title",    key:"musicTitle",   multiline:false, value:"Song List & Music Player"},
+    ],
+    give: [
+      {label:"Eyebrow Text",           key:"eyebrow",      multiline:false, value:"Give & Support"},
+      {label:"Page Title",             key:"title",        multiline:false, value:"Online Offering"},
+      {label:"Intro / Sub Text",       key:"intro",        multiline:true,  value:"Your generous giving helps us continue the ministry and reach more lives for Christ."},
+      {label:"Note / Footer Text",     key:"note",         multiline:true,  value:"All donations are used for church operations, outreach, and community service."},
+      {label:"GCash Card Label",       key:"gcashLabel",   multiline:false, value:"📱 GCASH"},
+      {label:"GCash Name Label",       key:"gcashNameLabel",multiline:false,value:"Name"},
+      {label:"GCash Account Name",     key:"gcashName",    multiline:false, value:"JRSMC Fund"},
+      {label:"GCash Number Label",     key:"gcashNumLabel",multiline:false, value:"Number"},
+      {label:"Bank Card Label",        key:"bankLabel",    multiline:false, value:"🏦 BANK TRANSFER"},
+      {label:"Bank Name Label",        key:"bankNameLabel",multiline:false, value:"Bank"},
+      {label:"Bank Account Name Label",key:"bankAccNameLabel",multiline:false,value:"Account Name"},
+      {label:"Bank Account Name",      key:"bankAccName",  multiline:false, value:"JRSMC Mission"},
+      {label:"Bank Account No Label",  key:"bankAccNumLabel",multiline:false,value:"Account No"},
+    ],
+    prayer: [
+      {label:"Eyebrow Text",           key:"eyebrow",      multiline:false, value:"We're Here For You"},
+      {label:"Page Title",             key:"title",        multiline:false, value:"Prayer Requests"},
+      {label:"Intro / Sub Text",       key:"intro",        multiline:true,  value:"We believe in the power of prayer. Submit your prayer requests and our team will pray for you."},
+      {label:"Confidentiality Note",   key:"note",         multiline:true,  value:"All prayer requests are kept confidential unless you choose to share publicly."},
+      {label:"Success Title",          key:"successTitle", multiline:false, value:"Prayer Submitted"},
+      {label:"Success Message",        key:"successMsg",   multiline:true,  value:"Our prayer team will intercede for you."},
+    ],
+  };
+  const [pages, setPages]             = useState(defaultPages);
+  const [activePage, setActivePage]   = useState("home");
+  const [contentSaving, setContentSaving] = useState(false);
+  const [contentSaved,  setContentSaved]  = useState(false);
+  // For adding new fields
+  const [newField, setNewField]       = useState({label:"", multiline:false});
+  const [addingField, setAddingField] = useState(false);
 
-  const save = () => { setSaved(true); setEditing(false); setTimeout(()=>setSaved(false), 2500); };
-  const saveContent = () => { setContentSaved(true); setTimeout(()=>setContentSaved(false), 2500); };
+  const pageIcons  = {home:"🏠",about:"⛪",ministries:"🙏",events:"🎉",media:"🎬",give:"💝",prayer:"🕊️"};
+  const pageLabels = {home:"Home",about:"About",ministries:"Ministries",events:"Events",media:"Media",give:"Give",prayer:"Prayer"};
+
+  // Load general settings from Supabase
+  useEffect(()=>{
+    dbGet("site_settings","?key=eq.general").then(res=>{
+      if(res&&res.length>0){
+        try{ setSettings(s=>({...s,...JSON.parse(res[0].value)})); }catch{}
+      }
+      setLoadingSettings(false);
+    }).catch(()=>setLoadingSettings(false));
+  },[]);
+
+  // Load page content from Supabase
+  useEffect(()=>{
+    dbGet("site_settings","?key=eq.page_content").then(res=>{
+      if(res&&res.length>0){
+        try{
+          const saved = JSON.parse(res[0].value);
+          // Merge saved values into defaultPages structure (keeps labels/keys, updates values)
+          const merged = {};
+          Object.keys(defaultPages).forEach(pg=>{
+            merged[pg] = defaultPages[pg].map(f=>({
+              ...f,
+              value: saved[pg]?.[f.key] !== undefined ? saved[pg][f.key] : f.value
+            }));
+            // Add any extra fields saved by head that aren't in defaultPages
+            if(saved[pg]?.__extra){
+              saved[pg].__extra.forEach(ef=>{
+                if(!merged[pg].find(x=>x.key===ef.key)){
+                  merged[pg].push(ef);
+                }
+              });
+            }
+          });
+          setPages(merged);
+        }catch{}
+      }
+      setLoadingContent(false);
+    }).catch(()=>setLoadingContent(false));
+  },[]);
+
+  const saveGeneral = async () => {
+    setSaving(true);
+    const val = JSON.stringify(settings);
+    const existing = await dbGet("site_settings","?key=eq.general");
+    if(existing&&existing.length>0) await dbUpdate("site_settings",existing[0].id,{value:val});
+    else await dbInsert("site_settings",{key:"general",value:val});
+    setSaving(false); setSaved(true); setEditing(false);
+    setTimeout(()=>setSaved(false),2500);
+  };
+
+  const saveContent = async () => {
+    setContentSaving(true);
+    // Serialize pages into {pageName: {key:value, __extra:[...]}}
+    const out = {};
+    Object.keys(pages).forEach(pg=>{
+      out[pg] = {};
+      const extras = [];
+      pages[pg].forEach(f=>{
+        out[pg][f.key] = f.value;
+        // Track which fields are custom (not in default)
+        if(!defaultPages[pg]?.find(d=>d.key===f.key)){
+          extras.push({label:f.label, key:f.key, multiline:f.multiline, value:f.value});
+        }
+      });
+      if(extras.length) out[pg].__extra = extras;
+    });
+    const val = JSON.stringify(out);
+    const existing = await dbGet("site_settings","?key=eq.page_content");
+    if(existing&&existing.length>0) await dbUpdate("site_settings",existing[0].id,{value:val});
+    else await dbInsert("site_settings",{key:"page_content",value:val});
+    setContentSaving(false); setContentSaved(true);
+    setTimeout(()=>setContentSaved(false),2500);
+  };
+
+  const updateField = (pg, key, val) => {
+    setPages(prev=>({...prev,[pg]:prev[pg].map(f=>f.key===key?{...f,value:val}:f)}));
+  };
+
+  const addField = () => {
+    if(!newField.label.trim()) return;
+    const key = newField.label.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"") + "_" + Date.now();
+    setPages(prev=>({...prev,[activePage]:[...prev[activePage],{label:newField.label.trim(),key,multiline:newField.multiline,value:""}]}));
+    setNewField({label:"",multiline:false}); setAddingField(false);
+  };
+
+  const removeField = (pg, key) => {
+    setPages(prev=>({...prev,[pg]:prev[pg].filter(f=>f.key!==key)}));
+  };
 
   const Field = ({label, field}) => (
     <div style={{marginBottom:16}}>
       <label>{label}</label>
       {editing
-        ? <input value={settings[field]} onChange={e=>setSettings({...settings,[field]:e.target.value})}/>
+        ? <input value={settings[field]||""} onChange={e=>setSettings({...settings,[field]:e.target.value})}/>
         : <div style={{padding:"12px 16px",background:"#12121A",border:"1px solid #22223A",color:"#F0EAD6"}}>{settings[field]}</div>}
     </div>
   );
   const Toggle = ({label, field, desc}) => (
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0",borderBottom:"1px solid #22223A"}}>
-      <div>
-        <div style={{fontWeight:600,marginBottom:2}}>{label}</div>
-        <div style={{fontSize:".85rem",color:"#9A9080"}}>{desc}</div>
-      </div>
+      <div><div style={{fontWeight:600,marginBottom:2}}>{label}</div><div style={{fontSize:".85rem",color:"#9A9080"}}>{desc}</div></div>
       <div onClick={()=>setSettings({...settings,[field]:!settings[field]})}
         style={{width:48,height:26,borderRadius:13,background:settings[field]?"#C9A84C":"#22223A",position:"relative",cursor:"pointer",transition:"all .3s",flexShrink:0}}>
         <div style={{position:"absolute",top:3,left:settings[field]?22:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"all .3s"}}/>
@@ -2059,56 +2340,30 @@ function SystemSettingsPanel({user, onUpdateUser}) {
     </div>
   );
 
-  const pageIcons = {home:"🏠",about:"⛪",ministries:"🙏",events:"🎉",media:"🎬",give:"💝",prayer:"🕊️"};
-  const pageLabels = {home:"Home",about:"About",ministries:"Ministries",events:"Events",media:"Media",give:"Give",prayer:"Prayer"};
-  const [activePage, setActivePage] = useState("home");
-
-  const ContentField = ({label, pageKey, fieldKey, multiline=false}) => (
-    <div style={{marginBottom:14}}>
-      <label style={{fontSize:".75rem"}}>{label}</label>
-      {multiline
-        ? <textarea rows={3} value={pageContent[pageKey][fieldKey]||""} onChange={e=>setPageContent({...pageContent,[pageKey]:{...pageContent[pageKey],[fieldKey]:e.target.value}})} style={{resize:"vertical"}}/>
-        : <input value={pageContent[pageKey][fieldKey]||""} onChange={e=>setPageContent({...pageContent,[pageKey]:{...pageContent[pageKey],[fieldKey]:e.target.value}})}/>}
-    </div>
-  );
-
-  const pageFields = {
-    home:       [["Hero Title","hero"],["Subtitle","sub"],["Bible Verse","verse"],["CTA Button Text","cta"]],
-    about:      [["Page Title","title"],["Description","body",true],["Vision","vision",true],["Mission","mission",true]],
-    ministries: [["Intro Text","intro",true]],
-    events:     [["Intro Text","intro",true]],
-    media:      [["Intro Text","intro",true]],
-    give:       [["Intro Text","intro",true],["Additional Note","note",true]],
-    prayer:     [["Intro Text","intro",true],["Confidentiality Note","note",true]],
-  };
-
-  const TABS = [["general","⚙️ General"],["content","📝 Page Content"],["roles","🔐 Role Access"]];
+  const TABS = [["general","⚙️ General"],["content","📝 Page Content"],["roles","🔐 Role Access"],["leadership","👥 Leadership"]];
 
   return (
     <div>
       <h4 className="font-display" style={{color:"#E8CC7A",marginBottom:24}}>⚙️ System Settings</h4>
-
-      {/* Tabs */}
       <div style={{display:"flex",gap:0,borderBottom:"1px solid #22223A",marginBottom:28,overflowX:"auto"}}>
         {TABS.map(([k,lbl])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"12px 22px",background:"none",border:"none",borderBottom:tab===k?"2px solid #C9A84C":"2px solid transparent",color:tab===k?"#E8CC7A":"#9A9080",cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",fontSize:".8rem",letterSpacing:".08em",whiteSpace:"nowrap",transition:"all .2s",marginBottom:"-1px"}}>{lbl}</button>
         ))}
       </div>
 
-      {/* General Tab */}
+      {/* ── GENERAL TAB ── */}
       {tab==="general" && (
         <div style={{maxWidth:640}}>
+          {loadingSettings ? <div style={{color:"#9A9080",padding:24}}>Loading...</div> : (<>
           <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginBottom:20}}>
-            {editing ? (
-              <>
-                <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={save}>Save Changes</button>
-                <button className="btnOut" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(false)}>Cancel</button>
-              </>
-            ) : (
+            {editing ? (<>
+              <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={saveGeneral} disabled={saving}>{saving?"Saving...":"Save Changes"}</button>
+              <button className="btnOut"  style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(false)}>Cancel</button>
+            </>) : (
               <button className="btnOut" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={()=>setEditing(true)}>✏️ Edit Settings</button>
             )}
           </div>
-          {saved && <div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:20,fontSize:".9rem"}}>✅ Settings saved!</div>}
+          {saved&&<div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:20,fontSize:".9rem"}}>✅ Settings saved!</div>}
           <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:28,marginBottom:16,position:"relative"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
             <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>⛪ Church Information</div>
@@ -2135,44 +2390,236 @@ function SystemSettingsPanel({user, onUpdateUser}) {
             <Toggle label="Allow New Signups" field="allowSignup" desc="Allow new members to register accounts."/>
             <Toggle label="Maintenance Mode" field="maintenanceMode" desc="Temporarily disable public access."/>
           </div>
+          </>)}
         </div>
       )}
 
-      {/* Page Content Tab */}
+      {/* ── PAGE CONTENT TAB ── */}
       {tab==="content" && (
         <div>
+          {loadingContent ? <div style={{color:"#9A9080",padding:24}}>Loading...</div> : (<>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
-            <div style={{color:"#9A9080",fontSize:".85rem"}}>Edit the text content shown on each public page.</div>
-            <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={saveContent}>💾 Save Content</button>
+            <div style={{color:"#9A9080",fontSize:".85rem"}}>Edit the text shown on each public navigation page.</div>
+            <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={saveContent} disabled={contentSaving}>{contentSaving?"Saving...":"💾 Save Content"}</button>
           </div>
           {contentSaved&&<div style={{background:"rgba(123,224,176,.1)",border:"1px solid rgba(123,224,176,.3)",padding:"12px 16px",color:"#7BE0B0",marginBottom:20,fontSize:".9rem"}}>✅ Content saved!</div>}
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-            {/* Page selector sidebar */}
-            <div style={{display:"flex",flexDirection:"column",gap:6,minWidth:140}}>
-              {Object.keys(pageFields).map(pg=>(
-                <button key={pg} onClick={()=>setActivePage(pg)}
+            {/* Sidebar - nav pages */}
+            <div style={{display:"flex",flexDirection:"column",gap:6,minWidth:145}}>
+              {Object.keys(pageLabels).map(pg=>(
+                <button key={pg} onClick={()=>{setActivePage(pg);setAddingField(false);}}
                   style={{padding:"10px 16px",background:activePage===pg?"rgba(201,168,76,.12)":"transparent",border:activePage===pg?"1px solid rgba(201,168,76,.4)":"1px solid transparent",color:activePage===pg?"#E8CC7A":"#9A9080",cursor:"pointer",textAlign:"left",fontFamily:"'Tenor Sans',sans-serif",fontSize:".8rem",letterSpacing:".06em",transition:"all .2s"}}>
                   {pageIcons[pg]} {pageLabels[pg]}
                 </button>
               ))}
             </div>
-            {/* Fields for selected page */}
+            {/* Fields panel */}
             <div style={{flex:1,background:"#1A1A28",border:"1px solid #22223A",padding:24,position:"relative",minWidth:260}}>
               <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#C9A84C,transparent)"}}/>
-              <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",marginBottom:20,textTransform:"uppercase"}}>{pageIcons[activePage]} {pageLabels[activePage]} Page</div>
-              {(pageFields[activePage]||[]).map(([lbl,fld,multi])=>(
-                <ContentField key={fld} label={lbl} pageKey={activePage} fieldKey={fld} multiline={!!multi}/>
-              ))}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",textTransform:"uppercase"}}>{pageIcons[activePage]} {pageLabels[activePage]} Page</div>
+                <button onClick={()=>setAddingField(!addingField)} style={{background:"none",border:"1px solid #C9A84C",color:"#C9A84C",padding:"4px 12px",fontSize:".72rem",cursor:"pointer",fontFamily:"'Tenor Sans',sans-serif",letterSpacing:".06em"}}>
+                  {addingField?"✕ Cancel":"＋ Add Field"}
+                </button>
+              </div>
+              {/* Existing fields */}
+              {(pages[activePage]||[]).map(f=>{
+                const isDefault = !!defaultPages[activePage]?.find(d=>d.key===f.key);
+                return (
+                  <div key={f.key} style={{marginBottom:16}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <label style={{fontSize:".75rem"}}>{f.label}</label>
+                      {!isDefault&&<button onClick={()=>removeField(activePage,f.key)} style={{background:"none",border:"none",color:"#E07B7B",cursor:"pointer",fontSize:".75rem"}}>✕ Remove</button>}
+                    </div>
+                    {f.multiline
+                      ? <textarea rows={3} value={f.value||""} onChange={e=>updateField(activePage,f.key,e.target.value)} style={{resize:"vertical"}}/>
+                      : <input value={f.value||""} onChange={e=>updateField(activePage,f.key,e.target.value)}/>}
+                  </div>
+                );
+              })}
+              {/* Add new field form */}
+              {addingField&&(
+                <div style={{background:"#12121A",border:"1px solid #22223A",padding:16,marginTop:8,display:"flex",flexDirection:"column",gap:10}}>
+                  <div className="font-sans" style={{fontSize:".7rem",color:"#7B9EF0",letterSpacing:".08em",textTransform:"uppercase"}}>New Field</div>
+                  <input placeholder="Field label (e.g. Contact Info)" value={newField.label} onChange={e=>setNewField({...newField,label:e.target.value})}/>
+                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:".8rem",cursor:"pointer"}}>
+                    <input type="checkbox" checked={newField.multiline} onChange={e=>setNewField({...newField,multiline:e.target.checked})} style={{width:14,height:14}}/>
+                    Multi-line text area
+                  </label>
+                  <button className="btnGold" style={{alignSelf:"flex-start",padding:"8px 18px",fontSize:".75rem"}} onClick={addField}>Add Field</button>
+                </div>
+              )}
             </div>
           </div>
+          </>)}
         </div>
       )}
 
-      {/* Role Access Tab */}
+      {/* ── ROLE ACCESS TAB ── */}
       {tab==="roles" && <RoleAccessManager/>}
+
+      {/* ── LEADERSHIP TAB ── */}
+      {tab==="leadership" && <LeadershipManager/>}
     </div>
   );
 }
+
+function LeadershipManager() {
+  const [leaders, setLeaders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState({name:"",role:"",description:"",icon:"👤"});
+  const [adding, setAdding] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
+
+  const ICONS = ["👑","💰","🎉","🎶","📝","🤝","👤","🙏","✝️","🎵","🌟","💝","🛡️","🎭","❤️"];
+
+  useEffect(()=>{
+    dbGet("leadership","?order=sort_order.asc,id.asc").then(d=>{
+      if(d&&d.length>0) setLeaders(d);
+      else {
+        // seed from hardcoded LEADERSHIP if table empty
+        setLeaders(LEADERSHIP.map((l,i)=>({...l,description:l.desc,sort_order:i})));
+      }
+      setLoading(false);
+    }).catch(()=>{ setLeaders(LEADERSHIP.map((l,i)=>({...l,description:l.desc,sort_order:i}))); setLoading(false); });
+  },[]);
+
+  const addLeader = async () => {
+    if(!form.name||!form.role) return;
+    setSaving(true);
+    const payload = {name:form.name, role:form.role, description:form.description, icon:form.icon, sort_order:leaders.length};
+    const r = await dbInsert("leadership", payload);
+    if(r&&r[0]) setLeaders([...leaders, r[0]]);
+    setForm({name:"",role:"",description:"",icon:"👤"}); setAdding(false); setSaving(false);
+  };
+
+  const updateLeader = async (id) => {
+    setSaving(true);
+    await dbUpdate("leadership", id, {name:form.name, role:form.role, description:form.description, icon:form.icon});
+    setLeaders(leaders.map(l=>l.id===id?{...l,...form}:l));
+    setEditId(null); setSaving(false); setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  };
+
+  const deleteLeader = async (id) => {
+    await dbDelete("leadership", id);
+    setLeaders(leaders.filter(l=>l.id!==id));
+  };
+
+  const moveUp = async (idx) => {
+    if(idx===0) return;
+    const arr = [...leaders];
+    [arr[idx-1],arr[idx]] = [arr[idx],arr[idx-1]];
+    setLeaders(arr);
+    await dbUpdate("leadership",arr[idx-1].id,{sort_order:idx-1});
+    await dbUpdate("leadership",arr[idx].id,{sort_order:idx});
+  };
+
+  const moveDown = async (idx) => {
+    if(idx===leaders.length-1) return;
+    const arr = [...leaders];
+    [arr[idx],arr[idx+1]] = [arr[idx+1],arr[idx]];
+    setLeaders(arr);
+    await dbUpdate("leadership",arr[idx].id,{sort_order:idx});
+    await dbUpdate("leadership",arr[idx+1].id,{sort_order:idx+1});
+  };
+
+  const startEdit = (l) => { setEditId(l.id); setForm({name:l.name,role:l.role,description:l.description||"",icon:l.icon||"👤"}); setAdding(false); };
+
+  if(loading) return <div style={{color:"#9A9080",padding:24}}>Loading leadership...</div>;
+
+  return (
+    <div style={{marginTop:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:12}}>
+        <div className="font-sans" style={{fontSize:".7rem",color:"#C9A84C",letterSpacing:".1em",textTransform:"uppercase"}}>👥 Leadership Team</div>
+        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          {saved&&<span style={{color:"#7BE0B0",fontSize:".8rem"}}>✅ Saved!</span>}
+          <button className="btnGold" style={{padding:"8px 18px",fontSize:".75rem"}} onClick={()=>{setAdding(!adding);setEditId(null);}}>
+            {adding?"✕ Cancel":"＋ Add Member"}
+          </button>
+        </div>
+      </div>
+
+      {/* Add form */}
+      {adding&&(
+        <div style={{background:"#1A1A28",border:"1px solid #22223A",padding:20,marginBottom:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+            <div><label style={{fontSize:".7rem"}}>Name</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Full name"/></div>
+            <div><label style={{fontSize:".7rem"}}>Role / Title</label><input value={form.role} onChange={e=>setForm({...form,role:e.target.value})} placeholder="e.g. Treasurer"/></div>
+          </div>
+          <div style={{marginBottom:12}}><label style={{fontSize:".7rem"}}>Description</label><textarea rows={2} value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Brief role description" style={{resize:"vertical"}}/></div>
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:".7rem"}}>Icon</label>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}}>
+              {ICONS.map(ic=>(
+                <div key={ic} onClick={()=>setForm({...form,icon:ic})}
+                  style={{width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,cursor:"pointer",border:`1px solid ${form.icon===ic?"#C9A84C":"#22223A"}`,background:form.icon===ic?"rgba(201,168,76,.15)":"transparent",borderRadius:4}}>
+                  {ic}
+                </div>
+              ))}
+            </div>
+          </div>
+          <button className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}} onClick={addLeader} disabled={saving}>{saving?"Saving...":"Add Member"}</button>
+        </div>
+      )}
+
+      {/* Leaders list */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {leaders.map((l,idx)=>(
+          <div key={l.id||idx} style={{background:"#12121A",border:"1px solid #22223A",padding:16}}>
+            {editId===l.id ? (
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                  <div><label style={{fontSize:".7rem"}}>Name</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+                  <div><label style={{fontSize:".7rem"}}>Role</label><input value={form.role} onChange={e=>setForm({...form,role:e.target.value})}/></div>
+                </div>
+                <div style={{marginBottom:12}}><label style={{fontSize:".7rem"}}>Description</label><textarea rows={2} value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})} style={{resize:"vertical"}}/></div>
+                <div style={{marginBottom:14}}>
+                  <label style={{fontSize:".7rem"}}>Icon</label>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}}>
+                    {ICONS.map(ic=>(
+                      <div key={ic} onClick={()=>setForm({...form,icon:ic})}
+                        style={{width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,cursor:"pointer",border:`1px solid ${form.icon===ic?"#C9A84C":"#22223A"}`,background:form.icon===ic?"rgba(201,168,76,.15)":"transparent",borderRadius:4}}>
+                        {ic}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:10}}>
+                  <button className="btnGold" style={{padding:"6px 16px",fontSize:".75rem"}} onClick={()=>updateLeader(l.id)} disabled={saving}>{saving?"Saving...":"Save"}</button>
+                  <button className="btnOut" style={{padding:"6px 16px",fontSize:".75rem"}} onClick={()=>setEditId(null)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                <div style={{display:"flex",gap:14,alignItems:"center"}}>
+                  <div style={{fontSize:24}}>{l.icon||"👤"}</div>
+                  <div>
+                    <div style={{fontWeight:600}}>{l.name}</div>
+                    <div style={{fontSize:".75rem",color:"#C9A84C",letterSpacing:".06em"}}>{l.role}</div>
+                    {l.description&&<div style={{fontSize:".8rem",color:"#9A9080",marginTop:2}}>{l.description}</div>}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <button onClick={()=>moveUp(idx)} style={{background:"none",border:"1px solid #22223A",color:"#9A9080",width:28,height:28,cursor:"pointer",fontSize:12}}>▲</button>
+                  <button onClick={()=>moveDown(idx)} style={{background:"none",border:"1px solid #22223A",color:"#9A9080",width:28,height:28,cursor:"pointer",fontSize:12}}>▼</button>
+                  <button onClick={()=>startEdit(l)} style={{background:"none",border:"1px solid #C9A84C",color:"#C9A84C",padding:"4px 12px",cursor:"pointer",fontSize:".75rem"}}>✏️ Edit</button>
+                  <button onClick={()=>setConfirmId(l.id)} style={{background:"none",border:"1px solid #E07B7B",color:"#E07B7B",padding:"4px 12px",cursor:"pointer",fontSize:".75rem"}}>🗑</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {leaders.length===0&&<div style={{color:"#9A9080",padding:24,textAlign:"center"}}>No leaders yet. Add your first member!</div>}
+      </div>
+      {confirmId&&<ConfirmDialog message="Remove this leader from the team?" onConfirm={()=>{deleteLeader(confirmId);setConfirmId(null);}} onCancel={()=>setConfirmId(null)}/>}
+    </div>
+  );
+}
+
 
 function RoleAccessManager() {
   const ALL_PANELS = [
@@ -2181,94 +2628,110 @@ function RoleAccessManager() {
     "Post Announcements","Attendance Logs","System Settings",
     "Member Records","Upload Documents","Song List","Rehearsal Schedule",
     "Practice Materials","Attendance Monitoring","Visitor Follow-up","Member List",
-    "My Profile","Devotion Submission","View Events","Giving History",
+    "My Profile","Devotion Submission","View Events","Announcements",
   ];
   const ROLES = ["head","treasurer","events","performance","secretary","engagement","member"];
   const [roleAccess, setRoleAccess] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(null);
-  const [saved, setSaved] = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving,  setSaving]    = useState(null);
+  const [saved,   setSaved]     = useState(null);
   const [openRole, setOpenRole] = useState(null);
 
   useEffect(()=>{
     dbGet("role_access","?order=role.asc").then(d=>{
+      const map = {};
       if(d&&d.length>0){
-        const map = {};
         d.forEach(row=>{
           try{ map[row.role] = typeof row.panels==="string" ? JSON.parse(row.panels) : (row.panels||[]); }catch{ map[row.role]=[]; }
         });
-        setRoleAccess(map);
-      } else {
-        // Initialize from hardcoded fallback
-        setRoleAccess({...ROLE_ACCESS});
       }
+      // For any role not yet in Supabase, use ROLE_ACCESS fallback
+      ROLES.forEach(r=>{ if(!map[r]) map[r] = ROLE_ACCESS[r]||[]; });
+      setRoleAccess(map);
       setLoading(false);
-    });
+    }).catch(()=>{ setRoleAccess(Object.fromEntries(ROLES.map(r=>[r,ROLE_ACCESS[r]||[]]))); setLoading(false); });
   },[]);
 
   const toggle = (role, panel) => {
     const cur = roleAccess[role]||[];
-    const updated = cur.includes(panel) ? cur.filter(p=>p!==panel) : [...cur, panel];
-    setRoleAccess({...roleAccess, [role]: updated});
+    const updated = cur.includes(panel) ? cur.filter(p=>p!==panel) : [...cur,panel];
+    setRoleAccess({...roleAccess,[role]:updated});
   };
 
   const saveRole = async (role) => {
     setSaving(role);
     const panels = JSON.stringify(roleAccess[role]||[]);
-    // Try update first, then insert
     const existing = await dbGet("role_access","?role=eq."+role);
-    if(existing&&existing.length>0){
-      await dbUpdate("role_access", existing[0].id, {panels});
-    } else {
-      await dbInsert("role_access", {role, panels});
-    }
+    if(existing&&existing.length>0) await dbUpdate("role_access",existing[0].id,{panels});
+    else await dbInsert("role_access",{role,panels});
     setSaving(null); setSaved(role);
     setTimeout(()=>setSaved(null),2000);
   };
 
   const roleLabel = r=>r==="head"?"👑 Head":r==="treasurer"?"💰 Treasurer":r==="events"?"🎉 Events":r==="performance"?"🎶 Performance":r==="secretary"?"📝 Secretary":r==="engagement"?"🤝 Engagement":"👤 Member";
 
+  if(loading) return <div style={{color:"#9A9080",padding:16}}>Loading...</div>;
+
   return (
-    <div style={{marginTop:32}}>
-      <div className="font-sans" style={{fontSize:".7rem",color:"#7B9EF0",letterSpacing:".1em",marginBottom:12,textTransform:"uppercase"}}>🔐 Role Access Manager</div>
-      {loading ? <div style={{color:"#9A9080",padding:16}}>Loading...</div> : (
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {ROLES.map(role=>(
+    <div style={{marginTop:8}}>
+      <div className="font-sans" style={{fontSize:".7rem",color:"#7B9EF0",letterSpacing:".1em",marginBottom:16,textTransform:"uppercase"}}>🔐 Role Access Manager</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {ROLES.map(role=>{
+          const panels = roleAccess[role]||[];
+          return (
             <div key={role} style={{background:"#12121A",border:"1px solid #22223A"}}>
               <div onClick={()=>setOpenRole(openRole===role?null:role)}
                 style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",cursor:"pointer"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#1A1A28"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div style={{fontWeight:600}}>{roleLabel(role)}</div>
                 <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                  <span style={{color:"#9A9080",fontSize:".8rem"}}>{(roleAccess[role]||[]).length} panels</span>
+                  <span style={{color:"#9A9080",fontSize:".8rem"}}>{panels.length} panels</span>
                   <span style={{color:"#9A9080"}}>{openRole===role?"▲":"▼"}</span>
                 </div>
               </div>
               {openRole===role&&(
                 <div style={{padding:"0 18px 18px"}}>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
-                    {ALL_PANELS.map(panel=>{
-                      const active = (roleAccess[role]||[]).includes(panel);
-                      return (
-                        <div key={panel} onClick={()=>toggle(role,panel)}
-                          style={{padding:"5px 12px",fontSize:".75rem",cursor:"pointer",border:`1px solid ${active?"#C9A84C":"#22223A"}`,background:active?"rgba(201,168,76,.15)":"transparent",color:active?"#E8CC7A":"#9A9080",fontFamily:"'Tenor Sans',sans-serif",transition:"all .2s"}}>
-                          {panel}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {/* Currently assigned panels */}
+                  {panels.length>0&&(
+                    <div style={{marginBottom:12}}>
+                      <div style={{fontSize:".7rem",color:"#9A9080",letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>Current Access</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                        {panels.map(p=>(
+                          <div key={p} onClick={()=>toggle(role,p)}
+                            style={{padding:"4px 12px",fontSize:".75rem",cursor:"pointer",border:"1px solid #C9A84C",background:"rgba(201,168,76,.15)",color:"#E8CC7A",fontFamily:"'Tenor Sans',sans-serif",display:"flex",alignItems:"center",gap:6}}>
+                            {p} <span style={{color:"#E07B7B",fontSize:".7rem"}}>✕</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Panels to add */}
+                  {ALL_PANELS.filter(p=>!panels.includes(p)).length>0&&(
+                    <div style={{marginBottom:14}}>
+                      <div style={{fontSize:".7rem",color:"#9A9080",letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>Add Access</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                        {ALL_PANELS.filter(p=>!panels.includes(p)).map(p=>(
+                          <div key={p} onClick={()=>toggle(role,p)}
+                            style={{padding:"4px 12px",fontSize:".75rem",cursor:"pointer",border:"1px solid #22223A",background:"transparent",color:"#9A9080",fontFamily:"'Tenor Sans',sans-serif"}}>
+                            + {p}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <button onClick={()=>saveRole(role)} className="btnGold" style={{padding:"8px 20px",fontSize:".75rem"}}>
                     {saving===role?"Saving...":saved===role?"✅ Saved!":"Save Changes"}
                   </button>
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
+
 
 // ── PROFILE PANEL ─────────────────────────────────────────────────────────────
 function ProfilePanel({user, onUpdateUser}) {
@@ -2501,8 +2964,8 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
     if(n.includes("rehearsal")||n.includes("rehearsal schedule"))  return <RehearsalPanel viewOnly={user.role!=="performance"}/>;
     if(n.includes("practice")||n.includes("practice materials"))    return <PracticePanel viewOnly={user.role!=="performance"}/>;
     if(n.includes("song")||n.includes("worship"))                   return <SongsPanel/>;
-    if(n.includes("devotion"))                                      return <DevotionPanel/>;
-    if(n.includes("giving"))                                        return <GivingHistoryPanel/>;
+    if(n.includes("devotion"))                                      return <DevotionPanel user={user}/>;
+    if(n.includes("giving")&&user.role!=="member")                  return <GivingHistoryPanel/>;
     if(n.includes("profile"))                                       return <ProfilePanel user={user} onUpdateUser={onUpdateUser}/>;
     return <div style={{textAlign:"center",padding:60}}><div style={{fontSize:48,marginBottom:16}}>🚧</div><h4 className="font-display" style={{color:"#C9A84C",marginBottom:8}}>{name}</h4><p style={{color:"#9A9080"}}>Coming soon!</p></div>;
   };
@@ -2551,11 +3014,47 @@ function Dashboard({user, onLogout, openProfileOnLoad, onUpdateUser}) {
 // ── GLOBAL ACTIVITY LOG (in-memory, shared across components) ────────────────
 
 export default function App() {
-  const [page, setPage]       = useState("Home");
+  const [page, setPage]       = useState(()=>{
+    try{
+      const u=sessionStorage.getItem("jrsmc_user");
+      const pg=sessionStorage.getItem("jrsmc_page");
+      if(u&&pg) return pg;
+    }catch{}
+    return "Home";
+  });
   const [menu, setMenu]       = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser]       = useState(null);
+  const [user, setUser]       = useState(()=>{
+    try{ const s=sessionStorage.getItem("jrsmc_user"); return s?JSON.parse(s):null; }catch{ return null; }
+  });
   const [profileTrigger, setProfileTrigger] = useState(false);
+  const [siteContent, setSiteContent] = useState(DEFAULT_CONTENT);
+
+  // Load page content + general settings into context
+  useEffect(()=>{
+    Promise.all([
+      dbGet("site_settings","?key=eq.page_content"),
+      dbGet("site_settings","?key=eq.general"),
+    ]).then(([contentRes, genRes])=>{
+      const merged = {...DEFAULT_CONTENT};
+      if(contentRes&&contentRes.length>0){
+        try{
+          const saved = JSON.parse(contentRes[0].value);
+          Object.keys(DEFAULT_CONTENT).forEach(pg=>{
+            merged[pg] = {...DEFAULT_CONTENT[pg]};
+            if(saved[pg]){
+              Object.keys(saved[pg]).forEach(k=>{ if(k!=="__extra") merged[pg][k]=saved[pg][k]; });
+              if(saved[pg].__extra) saved[pg].__extra.forEach(ef=>{ merged[pg][ef.key]=ef.value; });
+            }
+          });
+        }catch{}
+      }
+      if(genRes&&genRes.length>0){
+        try{ merged._general = JSON.parse(genRes[0].value); }catch{}
+      }
+      setSiteContent(merged);
+    }).catch(()=>{});
+  },[]);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 60);
@@ -2569,13 +3068,18 @@ export default function App() {
       setMenu(false); window.scrollTo(0, 0); return;
     }
     setPage(p); setMenu(false); window.scrollTo(0, 0);
+    try{ sessionStorage.setItem("jrsmc_page", p); }catch{}
   };
-  const login = (u) => { setUser(u); setPage("Dashboard"); };
-  const logout = () => { setUser(null); setPage("Home"); };
+  const login = (u) => { setUser(u); setPage("Dashboard"); try{ sessionStorage.setItem("jrsmc_user", JSON.stringify(u)); sessionStorage.setItem("jrsmc_page","Dashboard"); }catch{} };
+  const logout = () => { setUser(null); setPage("Home"); try{ sessionStorage.removeItem("jrsmc_user"); sessionStorage.removeItem("jrsmc_page"); }catch{} };
 
   // Called from ProfilePanel when user saves username/photo
   const updateUser = (updates) => {
-    setUser(prev => ({...prev, ...updates}));
+    setUser(prev => {
+      const u = {...prev, ...updates};
+      try{ sessionStorage.setItem("jrsmc_user", JSON.stringify(u)); }catch{}
+      return u;
+    });
   };
 
   const openProfile = () => {
@@ -2607,6 +3111,7 @@ export default function App() {
   };
 
   return (
+    <SiteContentContext.Provider value={siteContent}>
     <ErrorBoundary>
       <style>{style}</style>
       <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,transition:"all .3s",background:scrolled?"rgba(10,10,15,.95)":"rgba(10,10,15,.6)",backdropFilter:"blur(12px)",borderBottom:scrolled?"1px solid rgba(201,168,76,.2)":"1px solid transparent",padding:"0 32px"}}>
@@ -2731,5 +3236,6 @@ export default function App() {
         </div>
       </footer>
     </ErrorBoundary>
+    </SiteContentContext.Provider>
   );
 }

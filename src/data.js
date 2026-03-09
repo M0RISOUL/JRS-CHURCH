@@ -1,10 +1,12 @@
 export const LEADERSHIP = [
   { name: "Kuya Ivan", role: "Head", desc: "Overall leadership and supervision. Final approval on major decisions.", icon: "👑" },
-  { name: "Ange", role: "Treasurer", desc: "Oversees all church finances, reviews financial reports, budget monitoring.", icon: "💰" },
-  { name: "Angie", role: "Financial Dept Head", desc: "Collects monthly contributions, records offerings, submits reports.", icon: "💵" },
+  { name: "Ange", role: "Treasurer", desc: "Oversees all church finances, collects contributions, records offerings, reviews financial reports, budget monitoring.", icon: "💰" },
   { name: "Ced", role: "Events Dept Head / Engagement", desc: "Plans church events, monitors attendance, follows up visitors.", icon: "🎉" },
+  { name: "Pipper", role: "Events Dept", desc: "Assists in planning and organizing church events.", icon: "🎉" },
   { name: "Precious", role: "Performance Dept Head", desc: "Prepares performances and presentations, manages rehearsals.", icon: "🎶" },
+  { name: "Krislene", role: "Performance Dept", desc: "Member of the Performance Dept — worship presentations and rehearsals.", icon: "🎶" },
   { name: "Jam", role: "Secretary", desc: "Records meeting minutes, posts announcements, maintains member records.", icon: "📝" },
+  { name: "Tine", role: "Secretary", desc: "Assists in secretarial duties — events coordination and document management.", icon: "📝" },
 ];
 
 export const MINISTRIES = [
@@ -26,10 +28,10 @@ export const EVENTS = [
 ];
 
 export const SONGS = [
-  { title: "Rock of My Salvation",      author: "Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
-  { title: "Sa Iyo Ang Papuri",         author: "Worship Team",     category: "Worship",  youtube: "https://www.youtube.com/watch?v=LMnN7DHuMg0" },
-  { title: "Ikaw Ang Aming Bato",       author: "Worship Team",     category: "Hymn",     youtube: "https://www.youtube.com/watch?v=Tq9PbHTSWD0" },
-  { title: "Foundation of My Life",     author: "Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
+  { title: "Rock of My Salvation",      author: "D2 Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
+  { title: "Sa Iyo Ang Papuri",         author: "D2 Worship Team",     category: "Worship",  youtube: "https://www.youtube.com/watch?v=LMnN7DHuMg0" },
+  { title: "Ikaw Ang Aming Bato",       author: "D2 Worship Team",     category: "Hymn",     youtube: "https://www.youtube.com/watch?v=Tq9PbHTSWD0" },
+  { title: "Foundation of My Life",     author: "D2 Worship Team",     category: "Praise",   youtube: "https://www.youtube.com/watch?v=RgjrXcQFaHs" },
   { title: "How Great Is Our God",      author: "Chris Tomlin",        category: "Worship",  youtube: "https://www.youtube.com/watch?v=KBD18rsVJHk" },
   { title: "Blessed Be Your Name",      author: "Matt Redman",         category: "Praise",   youtube: "https://www.youtube.com/watch?v=VZBXO8qJuN4" },
   { title: "10,000 Reasons (Bless the Lord)", author: "Matt Redman",  category: "Worship",  youtube: "https://www.youtube.com/watch?v=DXDGE_lRI0E" },
@@ -49,13 +51,13 @@ export const ROLES = [
 ];
 
 export const ROLE_ACCESS = {
-  head:        ["Dashboard Overview","Manage Members","Manage Events","Finance","Post Announcements","Attendance Logs","Export Reports","System Settings","Upload Documents","Rehearsal Schedule","Practice Materials"],
-  treasurer:   ["Donation Records","Financial Reports","Monthly Budget","Export Reports","Announcements","Rehearsal Schedule","Practice Materials"],
-  events:      ["Manage Events","Upcoming Events","Post Announcements","Announcements","Rehearsal Schedule","Practice Materials"],
-  performance: ["Song List","Rehearsal Schedule","Practice Materials","Announcements"],
-  secretary:   ["Member Records","Post Announcements","Upload Documents","Rehearsal Schedule","Practice Materials"],
-  engagement:  ["Attendance Monitoring","Visitor Follow-up","Member List","Announcements","Rehearsal Schedule","Practice Materials"],
-  member:      ["My Profile","Devotion Submission","View Events","Giving History","Announcements"],
+  head:        ["Dashboard Overview","Manage Members","Manage Events","Finance","Post Announcements","Attendance Logs","Export Reports","System Settings","Upload Documents","Rehearsal Schedule","Practice Materials","Devotion Submission"],
+  treasurer:   ["Donation Records","Financial Reports","Monthly Budget","Export Reports","Announcements","Rehearsal Schedule","Practice Materials","Devotion Submission"],
+  events:      ["Manage Events","Upcoming Events","Post Announcements","Announcements","Rehearsal Schedule","Practice Materials","Devotion Submission"],
+  performance: ["Song List","Rehearsal Schedule","Practice Materials","Announcements","Devotion Submission"],
+  secretary:   ["Member Records","Post Announcements","Upload Documents","Rehearsal Schedule","Practice Materials","Devotion Submission"],
+  engagement:  ["Attendance Monitoring","Visitor Follow-up","Member List","Announcements","Rehearsal Schedule","Practice Materials","Devotion Submission"],
+  member:      ["My Profile","Devotion Submission","View Events","Announcements"],
 };
 
 export const ACCOUNTS = [
@@ -71,12 +73,12 @@ export const ACCOUNTS = [
     address: "Pasig City", birthday: "Feb 14, 1995",
     joinedDate: "January 2024", bio: "Treasurer overseeing church finances.",
   },
-  {
-    username: "angie", password: "finance2026", role: "treasurer",
-    fullName: "Angie", contact: "09XX-XXX-0003",
-    address: "Pasig City", birthday: "Mar 3, 1996",
-    joinedDate: "January 2024", bio: "Financial Dept — records contributions and offerings.",
-  },
+  // {
+  //   username: "angie", password: "finance2026", role: "treasurer",
+  //   fullName: "Angie", contact: "09XX-XXX-0003",
+  //   address: "Pasig City", birthday: "Mar 3, 1996",
+  //   joinedDate: "January 2024", bio: "Financial Dept — records contributions and offerings.",
+  // },
   {
     username: "ced", password: "events2026", role: "events",
     fullName: "Ced", contact: "09XX-XXX-0004",
